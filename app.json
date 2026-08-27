@@ -1,1 +1,17 @@
-{"expo":{"name":"Settlr","slug":"settlr","version":"0.1.0","scheme":"settlr","orientation":"portrait","userInterfaceStyle":"automatic","ios":{"bundleIdentifier":"com.settlr.app"},"android":{"package":"com.settlr.app"},"plugins":["expo-router"]}}
+{
+  "expo": {
+    "name": "Settlr",
+    "slug": "settlr",
+    "version": "0.1.0",
+    "scheme": "settlr",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.settlr.app"
+    },
+    "android": {
+      "package": "com.settlr.app"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

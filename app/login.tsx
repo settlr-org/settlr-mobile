@@ -1,0 +1,179 @@
+import AntDesign from "@expo/vector-icons/AntDesign";
+import { router } from "expo-router";
+import { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSession } from "../src/session";
+import { colors, shadow, type } from "../src/theme";
+
+export default function Login() {
+  const { signIn } = useSession();
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await signIn(mode, { name, email, password });
+      router.replace("/(tabs)");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <SafeAreaView style={s.safe}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={s.center}
+      >
+        <View style={s.logo}>
+          <AntDesign name="wallet" size={25} color={colors.white} />
+        </View>
+        <Text style={s.brand}>Settlr</Text>
+        <Text style={s.tagline}>Shared money, made clear.</Text>
+        <View style={s.card}>
+          <Text style={s.eyebrow}>WELCOME</Text>
+          <Text style={s.title}>
+            {mode === "login" ? "Good to see you" : "Create your account"}
+          </Text>
+          {mode === "register" && (
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Your name"
+              placeholderTextColor={colors.muted}
+              style={s.input}
+              autoCapitalize="words"
+            />
+          )}
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email address"
+            placeholderTextColor={colors.muted}
+            style={s.input}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            placeholderTextColor={colors.muted}
+            style={s.input}
+            secureTextEntry
+          />
+          {error ? <Text style={s.error}>{error}</Text> : null}
+          <Pressable
+            style={({ pressed }) => [s.button, pressed && { opacity: 0.82 }]}
+            onPress={submit}
+            disabled={busy}
+          >
+            <Text style={s.buttonText}>
+              {busy
+                ? "Please wait…"
+                : mode === "login"
+                  ? "Sign in"
+                  : "Create account"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setMode(mode === "login" ? "register" : "login")}
+          >
+            <Text style={s.switch}>
+              {mode === "login"
+                ? "New to Settlr? Create an account"
+                : "Already registered? Sign in"}
+            </Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.cream },
+  center: { flex: 1, justifyContent: "center", padding: 24 },
+  logo: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    backgroundColor: colors.teal,
+    alignSelf: "center",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brand: {
+    fontFamily: type.title,
+    fontSize: 36,
+    color: colors.ink,
+    textAlign: "center",
+    marginTop: 10,
+  },
+  tagline: {
+    color: colors.muted,
+    textAlign: "center",
+    fontSize: 12,
+    marginBottom: 28,
+  },
+  card: {
+    backgroundColor: colors.paper,
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow,
+  },
+  eyebrow: {
+    fontSize: 9,
+    letterSpacing: 2,
+    color: colors.teal,
+    fontWeight: "800",
+  },
+  title: {
+    fontFamily: type.title,
+    fontSize: 28,
+    color: colors.ink,
+    marginTop: 5,
+    marginBottom: 19,
+  },
+  input: {
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 13,
+    padding: 15,
+    color: colors.ink,
+    marginBottom: 11,
+  },
+  button: {
+    backgroundColor: colors.teal,
+    borderRadius: 13,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 3,
+  },
+  buttonText: { color: colors.white, fontWeight: "800" },
+  switch: {
+    color: colors.teal,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 18,
+  },
+  error: { color: colors.coral, fontSize: 11, marginBottom: 8 },
+});

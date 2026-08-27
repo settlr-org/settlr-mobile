@@ -1,3 +1,32 @@
-import { Platform } from 'react-native';
-export const colors = { ink:'#f3f4f1', muted:'#9aa19d', cream:'#090a09', paper:'#171817', sage:'#0d332a', teal:'#09bd8b', coral:'#ff6d70', line:'#292b2a', gold:'#e2b95b' } as const;
-export const type = { title: Platform.select({ios:'Avenir Next', android:'sans-serif', default:'system-ui'}), body: Platform.select({ios:'Avenir Next', android:'sans-serif', default:'system-ui'}) };
+import { Platform } from "react-native";
+export const colors = {
+  ink: "#18312b",
+  muted: "#687972",
+  cream: "#f3f5ef",
+  paper: "#fffefa",
+  sage: "#dcece4",
+  teal: "#176b54",
+  coral: "#bd4e54",
+  line: "#d9e1da",
+  gold: "#eea946",
+  white: "#ffffff",
+} as const;
+export const type = {
+  title: Platform.select({
+    ios: "Georgia",
+    android: "serif",
+    default: "Georgia",
+  }),
+  body: Platform.select({
+    ios: "Avenir Next",
+    android: "sans-serif",
+    default: "system-ui",
+  }),
+};
+export const shadow = {
+  shadowColor: "#18312b",
+  shadowOpacity: 0.08,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 2,
+} as const;
