@@ -31,6 +31,8 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     environment: production
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -38,7 +40,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx eas-cli update --channel production --auto --non-interactive
+      - name: Publish production update
+        if: env.EXPO_TOKEN != ''
+        run: npx eas-cli update --channel production --auto --non-interactive
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
+      - name: Report missing deployment credential
+        if: env.EXPO_TOKEN == ''
+        run: echo "::notice::EXPO_TOKEN is not configured; verification passed, but the EAS production update was skipped."
