@@ -1,0 +1,20 @@
+appId: com.settlr.app
+---
+# Friends — search, invite, requests
+- launchApp:
+    clearState: false
+- tapOn: "Friends"
+- assertVisible: "Friends"
+- assertVisible: "Find people"
+- tapOn: "Name or email"
+- inputText: "Maestro"
+- tapOn: "Search"
+- extendedWaitUntil:
+    visible: ".*@.*"
+    timeout: 5000
+    optional: true
+- tapOn: "Invite by email"
+- tapOn: "friend@example.com"
+- inputText: "maestro-friend+${MAESTRO_RUN_ID}@test.local"
+- tapOn: "Send"
+- assertVisible: "Invitation sent"

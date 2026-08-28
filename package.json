@@ -10,7 +10,11 @@
     "format": "prettier --write \"{app,src}/**/*.{ts,tsx}\" \"*.json\"",
     "format:check": "prettier --check \"{app,src}/**/*.{ts,tsx}\" \"*.json\"",
     "test": "vitest run",
-    "export:web": "expo export --platform web"
+    "test:watch": "vitest",
+    "export:web": "expo export --platform web",
+    "emulator": "./scripts/emulator.sh",
+    "e2e": "./scripts/e2e.sh",
+    "maestro": "maestro test maestro/flows"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -27,7 +31,11 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "latest",
+    "@testing-library/react-native": "latest",
     "@types/react": "latest",
+    "jest-expo": "latest",
+    "msw": "latest",
     "prettier": "^3.9.6",
     "typescript": "~6.0.3",
     "vitest": "latest"

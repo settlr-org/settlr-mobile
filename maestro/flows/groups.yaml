@@ -1,0 +1,26 @@
+appId: com.settlr.app
+---
+# Groups — create and list
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
+- tapOn: "Groups"
+- assertVisible: "Your groups"
+- tapOn:
+    id: ".*add.*"
+    point: "90%,10%"
+# Create group modal
+- extendedWaitUntil:
+    visible: "New group"
+    timeout: 5000
+- tapOn: "Group name"
+- inputText: "Maestro Group ${MAESTRO_RUN_ID}"
+- tapOn: "Description.*"
+- inputText: "E2E test group"
+- tapOn: "Create group"
+- extendedWaitUntil:
+    visible: "Maestro Group"
+    timeout: 10000
+- assertVisible: "Maestro Group"

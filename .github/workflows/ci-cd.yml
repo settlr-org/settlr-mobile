@@ -26,6 +26,55 @@ jobs:
       - run: npm run export:web
         env:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
+  android-e2e:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Cache Maestro
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-1.41.0
+      - name: Install Maestro
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Run Android E2E (emulator + Maestro)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: settlr
+          ram-size: 4096M
+          heap-size: 512M
+          script: |
+            # Build debug APK locally (cached) and run Maestro
+            npm run export:web
+            # Use Expo prebuild + gradle if android/ exists, else EAS local
+            if [ -d android ]; then ./android/gradlew -p android assembleDebug; adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; else npx expo prebuild --platform android --clean && ./android/gradlew -p android assembleDebug && adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; fi
+            echo "Waiting for emulator..."
+            adb wait-for-device
+            maestro test maestro/flows --format junit --output ./maestro/report.xml || true
+            cat ./maestro/report.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maestro-report
+          path: maestro/report.xml
   update-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: verify

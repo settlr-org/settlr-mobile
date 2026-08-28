@@ -1,0 +1,33 @@
+appId: com.settlr.app
+---
+# Auth — register, verify, login, logout
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Create account"
+    timeout: 15000
+- tapOn: "Create account"
+- assertVisible: "Create a free account"
+- tapOn: "Name"
+- inputText: "Maestro Tester"
+- tapOn: "Email"
+- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
+- tapOn: "Password"
+- inputText: "Test123!Test123!"
+- tapOn: "Create"
+- extendedWaitUntil:
+    visible: "Verify your email"
+    timeout: 10000
+# For local, token is in Mailpit http://localhost:8025 or leaked in JSON when APP_ENV=development
+# Pre-verify via host: docker exec settlr-postgres-local psql -U settlr -d settlr_local -c "update users set email_verified_at=now() where email like 'maestro%'"
+- tapOn: "Back to login"
+- assertVisible: "Welcome back"
+- tapOn: "Email"
+- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
+- tapOn: "Password"
+- inputText: "Test123!Test123!"
+- tapOn: "Sign in"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
+- assertVisible: "Home"

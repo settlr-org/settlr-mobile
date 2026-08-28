@@ -8,3 +8,7 @@ dist/
 !.env.production.example
 coverage/
 .playwright-cli/
+.maestro/
+maestro/report.xml
+android/
+ios/

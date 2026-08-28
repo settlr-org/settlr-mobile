@@ -1,10 +1,44 @@
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? "https://settlrapi.theswissknife.com"
 ).replace(/\/$/, "");
 const ACCESS = "settlr_access_token";
 const REFRESH = "settlr_refresh_token";
+
+// Web fallback: expo-secure-store is not available on web, use localStorage
+const isWeb = Platform.OS === "web";
+const storage = {
+  getItemAsync: async (key: string) => {
+    if (isWeb) {
+      try {
+        return globalThis.localStorage?.getItem(key) ?? null;
+      } catch {
+        return null;
+      }
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItemAsync: async (key: string, value: string) => {
+    if (isWeb) {
+      try {
+        globalThis.localStorage?.setItem(key, value);
+      } catch {}
+      return;
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  deleteItemAsync: async (key: string) => {
+    if (isWeb) {
+      try {
+        globalThis.localStorage?.removeItem(key);
+      } catch {}
+      return;
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
 
 export type User = {
   id: string;
@@ -54,14 +88,14 @@ async function fetchWithTimeout(
 
 export async function saveSession(session: Session) {
   await Promise.all([
-    SecureStore.setItemAsync(ACCESS, session.access_token),
-    SecureStore.setItemAsync(REFRESH, session.refresh_token),
+    storage.setItemAsync(ACCESS, session.access_token),
+    storage.setItemAsync(REFRESH, session.refresh_token),
   ]);
 }
 export async function clearSession() {
   await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS),
-    SecureStore.deleteItemAsync(REFRESH),
+    storage.deleteItemAsync(ACCESS),
+    storage.deleteItemAsync(REFRESH),
   ]);
 }
 
@@ -77,7 +111,7 @@ async function errorMessage(response: Response) {
 }
 
 async function refresh() {
-  const refreshToken = await SecureStore.getItemAsync(REFRESH);
+  const refreshToken = await storage.getItemAsync(REFRESH);
   if (!refreshToken) return null;
   const response = await fetchWithTimeout(`${API_URL}/api/v1/auth/refresh`, {
     method: "POST",
@@ -101,7 +135,7 @@ export async function apiFetch<T>(
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
   if (init.body) headers.set("Content-Type", "application/json");
-  const token = await SecureStore.getItemAsync(ACCESS);
+  const token = await storage.getItemAsync(ACCESS);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetchWithTimeout(`${API_URL}${path}`, {
     ...init,
@@ -135,7 +169,7 @@ export async function authenticate(
 }
 
 export async function logout() {
-  const token = await SecureStore.getItemAsync(REFRESH);
+  const token = await storage.getItemAsync(REFRESH);
   try {
     await fetchWithTimeout(`${API_URL}/api/v1/auth/logout`, {
       method: "POST",
