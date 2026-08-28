@@ -26,6 +26,32 @@ export class ApiError extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+) {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(
+    () => controller.abort(),
+    REQUEST_TIMEOUT_MS,
+  );
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new ApiError(
+        408,
+        "The server took too long to respond. Please try again.",
+      );
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
 export async function saveSession(session: Session) {
   await Promise.all([
     SecureStore.setItemAsync(ACCESS, session.access_token),
@@ -53,7 +79,7 @@ async function errorMessage(response: Response) {
 async function refresh() {
   const refreshToken = await SecureStore.getItemAsync(REFRESH);
   if (!refreshToken) return null;
-  const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+  const response = await fetchWithTimeout(`${API_URL}/api/v1/auth/refresh`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -77,7 +103,10 @@ export async function apiFetch<T>(
   if (init.body) headers.set("Content-Type", "application/json");
   const token = await SecureStore.getItemAsync(ACCESS);
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const response = await fetchWithTimeout(`${API_URL}${path}`, {
+    ...init,
+    headers,
+  });
   if (response.status === 401 && retry && (await refresh()))
     return apiFetch<T>(path, init, false);
   if (!response.ok)
@@ -89,10 +118,14 @@ export async function authenticate(
   mode: "login" | "register",
   input: { name?: string; email: string; password: string },
 ) {
-  const response = await fetch(`${API_URL}/api/v1/auth/${mode}`, {
+  const body =
+    mode === "register"
+      ? { name: input.name, email: input.email, password: input.password }
+      : { email: input.email, password: input.password };
+  const response = await fetchWithTimeout(`${API_URL}/api/v1/auth/${mode}`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(body),
   });
   if (!response.ok)
     throw new ApiError(response.status, await errorMessage(response));
@@ -104,7 +137,7 @@ export async function authenticate(
 export async function logout() {
   const token = await SecureStore.getItemAsync(REFRESH);
   try {
-    await fetch(`${API_URL}/api/v1/auth/logout`, {
+    await fetchWithTimeout(`${API_URL}/api/v1/auth/logout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: token }),
