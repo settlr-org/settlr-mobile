@@ -1,0 +1,35 @@
+name: Promote tested mobile release
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact tested commit SHA to promote
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Require an immutable commit SHA
+        run: |
+          test "${{ inputs.release_sha }}" = "$(git rev-parse HEAD)"
+          git rev-parse --verify "${{ inputs.release_sha }}^{commit}"
+      - name: Publish production update
+        run: npx eas-cli update --channel production --auto --non-interactive
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.PRODUCTION_API_URL || 'https://settlrapi.theswissknife.com' }}

@@ -5,7 +5,7 @@
 # For staging: maestro test --env STAGING=1 or set EXPO_PUBLIC_API_URL
 env:
   STAGING: "0"
-  API_URL: "http://10.0.2.2:18080"
+  API_URL: "http://10.0.2.2:18081"
 
 # On CI, emulator is fresh, so no need to clear state between flows
 flowsOrder:

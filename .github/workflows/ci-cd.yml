@@ -2,7 +2,7 @@ name: Mobile CI and EAS update
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,7 +28,9 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
   android-e2e:
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Native E2E is limited to the disposable staging fixture; it never
+    # creates accounts or expenses against production.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -68,18 +70,18 @@ jobs:
             if [ -d android ]; then ./android/gradlew -p android assembleDebug; adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; else npx expo prebuild --platform android --clean && ./android/gradlew -p android assembleDebug && adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; fi
             echo "Waiting for emulator..."
             adb wait-for-device
-            maestro test maestro/flows --format junit --output ./maestro/report.xml || true
+            maestro test maestro/flows --format junit --output ./maestro/report.xml
             cat ./maestro/report.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: maestro-report
           path: maestro/report.xml
-  update-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: verify
+  update-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    needs: [verify, android-e2e]
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
@@ -89,11 +91,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Publish production update
+      - name: Publish staging update
         if: env.EXPO_TOKEN != ''
-        run: npx eas-cli update --channel production --auto --non-interactive
+        run: npx eas-cli update --channel preview --auto --non-interactive
         env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://settlrstagingapi.theswissknife.com' }}
       - name: Report missing deployment credential
         if: env.EXPO_TOKEN == ''
-        run: echo "::notice::EXPO_TOKEN is not configured; verification passed, but the EAS production update was skipped."
+        run: echo "::error::EXPO_TOKEN is required to publish the staging update."
