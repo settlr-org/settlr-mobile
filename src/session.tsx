@@ -15,18 +15,16 @@ type SessionContextValue = {
     values: { name?: string; email: string; password: string },
   ) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>;
 };
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const refreshUser = async () => {
-    setUser(await restoreUser());
-  };
   useEffect(() => {
-    refreshUser().finally(() => setLoading(false));
+    restoreUser()
+      .then(setUser)
+      .finally(() => setLoading(false));
   }, []);
   const signIn = async (
     mode: "login" | "register",
@@ -40,9 +38,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
   return (
-    <SessionContext.Provider
-      value={{ user, loading, signIn, signOut, refreshUser }}
-    >
+    <SessionContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
     </SessionContext.Provider>
   );

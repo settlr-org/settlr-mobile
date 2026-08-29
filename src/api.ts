@@ -46,12 +46,12 @@ export type User = {
   email: string;
   default_currency?: string;
 };
-export type Session = {
+type Session = {
   access_token: string;
   refresh_token: string;
   user?: User;
 };
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
@@ -86,13 +86,13 @@ async function fetchWithTimeout(
   }
 }
 
-export async function saveSession(session: Session) {
+async function saveSession(session: Session) {
   await Promise.all([
     storage.setItemAsync(ACCESS, session.access_token),
     storage.setItemAsync(REFRESH, session.refresh_token),
   ]);
 }
-export async function clearSession() {
+async function clearSession() {
   await Promise.all([
     storage.deleteItemAsync(ACCESS),
     storage.deleteItemAsync(REFRESH),

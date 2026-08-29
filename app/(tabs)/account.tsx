@@ -3,13 +3,7 @@ import { router } from "expo-router";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { useSession } from "../../src/session";
 import { colors, shadow, type } from "../../src/theme";
-const initials = (n: string) =>
-  n
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((x) => x[0])
-    .join("")
-    .toUpperCase();
+import { initials } from "../../src/utils/initials";
 export default function Account() {
   const { user, signOut } = useSession();
   const leave = async () => {

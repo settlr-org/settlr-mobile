@@ -14,6 +14,7 @@ import {
 import { apiFetch } from "../../src/api";
 import { useSession } from "../../src/session";
 import { colors, shadow, type } from "../../src/theme";
+import { initials } from "../../src/utils/initials";
 
 type Balance = {
   summary: { you_are_owed: number; you_owe: number; net_balance: number };
@@ -33,13 +34,6 @@ const fmt = (n: number, c = "NPR") =>
     currency: c,
     maximumFractionDigits: 2,
   }).format(n / 100);
-const initials = (n: string) =>
-  n
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((x) => x[0])
-    .join("")
-    .toUpperCase();
 export default function Home() {
   const { user } = useSession();
   const [balance, setBalance] = useState<Balance>();
