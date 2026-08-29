@@ -17,11 +17,6 @@ export const type = {
     android: "serif",
     default: "Georgia",
   }),
-  body: Platform.select({
-    ios: "Avenir Next",
-    android: "sans-serif",
-    default: "system-ui",
-  }),
 };
 export const shadow = {
   shadowColor: "#18312b",

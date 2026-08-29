@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { apiFetch } from "../../src/api";
 import { colors, shadow, type } from "../../src/theme";
+import { initials } from "../../src/utils/initials";
 
 type Friend = {
   friendship_id: string;
@@ -30,14 +31,6 @@ type FriendRequest = {
   created_at: string;
 };
 type SearchUser = { id: string; name: string; email?: string };
-
-const initials = (n: string) =>
-  n
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((x) => x[0])
-    .join("")
-    .toUpperCase();
 
 export default function Friends() {
   const [friends, setFriends] = useState<Friend[]>([]);
