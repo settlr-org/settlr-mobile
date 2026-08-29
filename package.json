@@ -31,11 +31,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
-    "@testing-library/jest-native": "latest",
-    "@testing-library/react-native": "latest",
     "@types/react": "latest",
-    "jest-expo": "latest",
-    "msw": "latest",
     "prettier": "^3.9.6",
     "typescript": "~6.0.3",
     "vitest": "latest"
