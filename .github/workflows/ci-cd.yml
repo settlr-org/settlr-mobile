@@ -61,8 +61,14 @@ jobs:
           target: google_apis
           arch: x86_64
           avd-name: settlr
-          ram-size: 4096M
+          # GitHub hosted runners can have less than 7 GB free after the SDK
+          # image is installed. The default userdata partition is ~7.4 GB and
+          # prevents the emulator from starting. The E2E fixture needs neither
+          # a large userdata disk nor 4 GB of guest RAM.
+          disk-size: 2048M
+          ram-size: 2048M
           heap-size: 512M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           script: |
             # Build debug APK locally (cached) and run Maestro
             npm run export:web
@@ -72,11 +78,19 @@ jobs:
             adb wait-for-device
             maestro test maestro/flows --format junit --output ./maestro/report.xml
             cat ./maestro/report.xml
+      - name: Collect Android diagnostics
+        if: failure()
+        run: |
+          df -h
+          adb devices || true
+          adb logcat -d -t 500 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: maestro-report
-          path: maestro/report.xml
+          path: |
+            maestro/report.xml
+          if-no-files-found: warn
   update-preview:
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     needs: [verify, android-e2e]
