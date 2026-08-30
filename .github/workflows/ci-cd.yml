@@ -81,6 +81,12 @@ jobs:
           # emulator can otherwise retain the system-image default userdata
           # partition (about 7.4 GB). Pass its launch flag as well.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics -partition-size 2048
+          # API 34's first userdata image requires ~7.4 GB. The GitHub image
+          # has less space after installing the Android SDK, so remove only
+          # unrelated preinstalled toolchains from this ephemeral runner.
+          pre-emulator-launch-script: |
+            sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/.ghcup
+            df -h "$RUNNER_TEMP"
           disable-linux-hw-accel: false
           script: |
             # Build a bundled APK and run Maestro. assembleDebug requires a
