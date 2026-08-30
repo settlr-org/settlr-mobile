@@ -32,11 +32,13 @@ jobs:
     # creates accounts or expenses against production.
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       # Native E2E must exercise the disposable staging fixture, never the
       # production API default baked into app.config.ts.
       EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://settlrstagingapi.theswissknife.com' }}
+      MAESTRO_EMAIL: ${{ secrets.MAESTRO_E2E_EMAIL }}
+      MAESTRO_PASSWORD: ${{ secrets.MAESTRO_E2E_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -93,10 +95,21 @@ jobs:
             # Metro server at runtime and would otherwise show a redbox in CI.
             npm run export:web
             npx expo prebuild --platform android --clean
-            ./android/gradlew -p android assembleRelease
+            # Build just the ABI used by this emulator. Keeping temporary
+            # native CMake/Prefab files on the runner filesystem avoids the
+            # small /tmp partition used by hosted runners.
+            export TMPDIR="$RUNNER_TEMP/settlr-native-tmp"
+            mkdir -p "$TMPDIR"
+            export GRADLE_OPTS="-Djava.io.tmpdir=$TMPDIR"
+            export JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$TMPDIR"
+            ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 \
+              :react-native-worklets:externalNativeBuildRelease assembleRelease
             adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
             adb wait-for-device
+            # The disposable staging user is intentionally stored as secrets;
+            # registration cannot expose verification tokens outside local dev.
+            test -n "$MAESTRO_EMAIL" && test -n "$MAESTRO_PASSWORD"
             maestro test maestro/flows --format junit --output ./maestro/report.xml
             cat ./maestro/report.xml
       - name: Collect Android diagnostics

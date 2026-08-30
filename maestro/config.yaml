@@ -10,6 +10,7 @@ env:
 # On CI, emulator is fresh, so no need to clear state between flows
 flowsOrder:
   - auth.yaml
+  - login.yaml
   - groups.yaml
   - expense-equal.yaml
   - friends.yaml

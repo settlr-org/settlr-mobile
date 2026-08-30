@@ -124,6 +124,7 @@ export default function Add() {
           </ScrollView>
           <Text style={s.label}>Description</Text>
           <TextInput
+            testID="expense-description"
             value={description}
             onChangeText={setDescription}
             placeholder="Dinner, taxi, groceries…"
@@ -136,6 +137,7 @@ export default function Add() {
               {groups.find((g) => g.id === groupId)?.currency || "NPR"}
             </Text>
             <TextInput
+              testID="expense-amount"
               value={amount}
               onChangeText={setAmount}
               placeholder="0.00"
@@ -156,6 +158,7 @@ export default function Add() {
           </View>
           {error ? <Text style={s.error}>{error}</Text> : null}
           <Pressable
+            testID="expense-submit"
             style={[s.cta, (busy || !members.length) && { opacity: 0.5 }]}
             onPress={save}
             disabled={busy || !members.length}

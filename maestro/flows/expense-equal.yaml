@@ -1,31 +1,23 @@
 appId: com.settlr.app
 ---
 # Expense equal split — add and verify balances
+- runFlow: login.yaml
 - launchApp:
     clearState: false
-- tapOn: "Groups"
-- tapOn: "Maestro Group"
+- tapOn: "Add expense"
 - extendedWaitUntil:
-    visible: "NET BALANCE"
+    visible: "What did you pay for?"
     timeout: 10000
 - tapOn:
-    point: "90%,10%"
-    optional: true
-- tapOn:
-    text: "Add expense"
-    optional: true
-- tapOn:
-    id: ".*plus.*"
-    optional: true
-- extendedWaitUntil:
-    visible: "What did you pay for"
-    timeout: 10000
-- tapOn: "Description"
+    id: "expense-description"
 - inputText: "Maestro Lunch ${MAESTRO_RUN_ID}"
-- tapOn: "Amount"
+- tapOn:
+    id: "expense-amount"
 - inputText: "12.34"
-- tapOn: "Save expense"
+- hideKeyboard
+- tapOn:
+    id: "expense-submit"
 - extendedWaitUntil:
-    visible: "Maestro Lunch"
+    visible: "Maestro Lunch.*"
     timeout: 10000
-- assertVisible: "Maestro Lunch"
+- assertVisible: "Maestro Lunch.*"

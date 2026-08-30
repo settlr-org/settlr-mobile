@@ -1,33 +1,29 @@
 appId: com.settlr.app
 ---
-# Auth — register, verify, login, logout
+# Auth — registration must not create a session until the email is verified.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "Create account"
+    visible: "New to Settlr\\? Create an account"
     timeout: 15000
-- tapOn: "Create account"
-- assertVisible: "Create a free account"
-- tapOn: "Name"
+- tapOn:
+    id: "auth-mode-switch"
+- assertVisible: "Create your account"
+- tapOn:
+    id: "register-name"
 - inputText: "Maestro Tester"
-- tapOn: "Email"
-- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
-- tapOn: "Password"
+- tapOn:
+    id: "auth-email"
+- inputText: "m${MAESTRO_RUN_ID}@test.local"
+- pressKey: Enter
 - inputText: "Test123!Test123!"
-- tapOn: "Create"
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
 - extendedWaitUntil:
     visible: "Verify your email"
     timeout: 10000
-# For local, token is in Mailpit http://localhost:8025 or leaked in JSON when APP_ENV=development
-# Pre-verify via host: docker exec settlr-postgres-local psql -U settlr -d settlr_local -c "update users set email_verified_at=now() where email like 'maestro%'"
-- tapOn: "Back to login"
-- assertVisible: "Welcome back"
-- tapOn: "Email"
-- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
-- tapOn: "Password"
-- inputText: "Test123!Test123!"
-- tapOn: "Sign in"
-- extendedWaitUntil:
-    visible: "Overview"
-    timeout: 10000
-- assertVisible: "Home"
+- assertVisible: "Back to login"
+- tapOn:
+    id: "auth-back-to-login"
+- assertVisible: "Good to see you"

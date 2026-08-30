@@ -51,6 +51,11 @@ type Session = {
   refresh_token: string;
   user?: User;
 };
+export type RegistrationPending = {
+  email: string;
+  verification_required: true;
+};
+export type AuthenticationResult = Session | RegistrationPending;
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -151,7 +156,7 @@ export async function apiFetch<T>(
 export async function authenticate(
   mode: "login" | "register",
   input: { name?: string; email: string; password: string },
-) {
+): Promise<AuthenticationResult> {
   const body =
     mode === "register"
       ? { name: input.name, email: input.email, password: input.password }
@@ -163,9 +168,10 @@ export async function authenticate(
   });
   if (!response.ok)
     throw new ApiError(response.status, await errorMessage(response));
-  const session = (await response.json()) as Session;
-  await saveSession(session);
-  return session;
+  const result = (await response.json()) as AuthenticationResult;
+  if ("verification_required" in result) return result;
+  await saveSession(result);
+  return result;
 }
 
 export async function logout() {
