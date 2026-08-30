@@ -77,7 +77,10 @@ jobs:
           disk-size: 2048M
           ram-size: 2048M
           heap-size: 512M
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
+          # `disk-size` is written to the AVD config by the action, but the
+          # emulator can otherwise retain the system-image default userdata
+          # partition (about 7.4 GB). Pass its launch flag as well.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics -partition-size 2048
           disable-linux-hw-accel: false
           script: |
             # Build a bundled APK and run Maestro. assembleDebug requires a
