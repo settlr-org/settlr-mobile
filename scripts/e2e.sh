@@ -5,6 +5,13 @@ export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 export TMPDIR="${TMPDIR:-$PWD/.tmp-native-build}"
 mkdir -p "$TMPDIR"
+# Android Gradle Plugin's Prefab helper is a Java process and otherwise uses
+# /tmp directly, ignoring TMPDIR. Keep its temporary C++ artifacts off the
+# limited hosted-runner tmpfs as well.
+export GRADLE_OPTS="${GRADLE_OPTS:-} -Djava.io.tmpdir=$TMPDIR"
+# Maestro is JVM-based and its Android driver also creates temporary APK
+# files. Point it at the same workspace-backed location.
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Djava.io.tmpdir=$TMPDIR"
 
 # Config
 API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:18081}"
@@ -42,7 +49,11 @@ else
   echo "→ No APK at $APK_PATH, building a bundled x86_64 release APK..."
   if [[ -d ./android ]]; then
     export EXPO_PUBLIC_API_URL="$API_URL"
-    ./android/gradlew -p android -PreactNativeArchitectures=x86_64 assembleRelease
+    # Worklets is a Prefab dependency of gesture-handler. Build it first so
+    # parallel native-task scheduling cannot link gesture-handler before
+    # libworklets.so exists.
+    ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 \
+      :react-native-worklets:externalNativeBuildRelease assembleRelease
     APK_PATH="./android/app/build/outputs/apk/release/app-release.apk"
     adb install -r "$APK_PATH"
   else

@@ -4,29 +4,26 @@ appId: com.settlr.app
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "Create account"
+    visible: "New to Settlr\\? Create an account"
     timeout: 15000
-- tapOn: "Create account"
-- assertVisible: "Create a free account"
-- tapOn: "Name"
+- tapOn:
+    id: "auth-mode-switch"
+- assertVisible: "Create your account"
+- tapOn:
+    id: "register-name"
 - inputText: "Maestro Tester"
-- tapOn: "Email"
-- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
-- tapOn: "Password"
+- tapOn:
+    id: "auth-email"
+- inputText: "m${MAESTRO_RUN_ID}@test.local"
+- pressKey: Enter
 - inputText: "Test123!Test123!"
-- tapOn: "Create"
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
 - extendedWaitUntil:
     visible: "Verify your email"
     timeout: 10000
 - assertVisible: "Back to login"
-- tapOn: "Back to login"
+- tapOn:
+    id: "auth-back-to-login"
 - assertVisible: "Good to see you"
-- tapOn: "Email"
-- inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
-- tapOn: "Password"
-- inputText: "Test123!Test123!"
-- tapOn: "Sign in"
-- extendedWaitUntil:
-    visible: "Overview"
-    timeout: 10000
-- assertVisible: "Home"

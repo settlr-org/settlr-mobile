@@ -3,11 +3,15 @@ appId: com.settlr.app
 # A verified fixture is provisioned by scripts/test-platform.sh.
 - launchApp:
     clearState: true
-- tapOn: "Email address"
+- tapOn:
+    id: "auth-email"
 - inputText: "${MAESTRO_EMAIL}"
-- tapOn: "Password"
+- tapOn:
+    id: "auth-password"
 - inputText: "${MAESTRO_PASSWORD}"
-- tapOn: "Sign in"
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
 - extendedWaitUntil:
     visible: "Overview"
     timeout: 15000

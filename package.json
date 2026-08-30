@@ -14,6 +14,7 @@
     "export:web": "expo export --platform web",
     "emulator": "./scripts/emulator.sh",
     "e2e": "./scripts/e2e.sh",
+    "test:platform": "./scripts/test-platform.sh",
     "maestro": "maestro test maestro/flows"
   },
   "dependencies": {

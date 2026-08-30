@@ -76,6 +76,7 @@ export default function Groups() {
             <Text style={s.muted}>{groups.length} active</Text>
           </View>
           <Pressable
+            testID="groups-create"
             style={s.add}
             onPress={() => setShow(true)}
             accessibilityLabel="Create group"
@@ -131,6 +132,7 @@ export default function Groups() {
               </Pressable>
             </View>
             <TextInput
+              testID="group-name"
               value={name}
               onChangeText={setName}
               placeholder="Group name"
@@ -138,13 +140,19 @@ export default function Groups() {
               style={s.input}
             />
             <TextInput
+              testID="group-description"
               value={description}
               onChangeText={setDescription}
               placeholder="Description (optional)"
               placeholderTextColor={colors.muted}
               style={s.input}
             />
-            <Pressable style={s.cta} onPress={create} disabled={!name.trim()}>
+            <Pressable
+              testID="group-submit"
+              style={s.cta}
+              onPress={create}
+              disabled={!name.trim()}
+            >
               <Text style={s.ctaText}>Create group</Text>
             </Pressable>
           </View>

@@ -10,9 +10,13 @@ coverage/
 .playwright-cli/
 .maestro/
 maestro/report.xml
+maestro/*-report.xml
 android/
 ios/
 .tmp-native-build/
 .release-test.log
+.*-build.log
+.full-suite.log
+.platform-test.log
 # Local Google Play service-account credential. Never commit this key.
 settlr-507105-16b0a352b6dd.json

@@ -9,7 +9,8 @@ HOST_API_URL="${HOST_API_URL:-http://localhost:18081}"
 RUN_ID="${MAESTRO_RUN_ID:-mobile-$(date +%s)}"
 EMAIL="${MAESTRO_EMAIL:-${RUN_ID}@test.local}"
 PASSWORD="${MAESTRO_PASSWORD:-Test123!Test123!}"
-RESPONSE="$(mktemp)"
+mkdir -p "$ROOT/.tmp-native-build"
+RESPONSE="$(mktemp "$ROOT/.tmp-native-build/fixture.XXXXXX")"
 trap 'rm -f "$RESPONSE"' EXIT
 
 cd "$ROOT"
@@ -31,6 +32,6 @@ curl -fsS -H 'Content-Type: application/json' \
   -X POST "$HOST_API_URL/api/v1/auth/verify-email" \
   --data "{\"token\":\"$token\"}" >/dev/null
 
-MAESTRO_EMAIL="$EMAIL" MAESTRO_PASSWORD="$PASSWORD" \
+MAESTRO_RUN_ID="$RUN_ID" MAESTRO_EMAIL="$EMAIL" MAESTRO_PASSWORD="$PASSWORD" \
   EXPO_PUBLIC_API_URL="$API_URL" TMPDIR="$ROOT/.tmp-native-build" ./scripts/e2e.sh \
   ./android/app/build/outputs/apk/release/app-release.apk ./maestro/flows

@@ -1,20 +1,26 @@
 appId: com.settlr.app
 ---
 # Friends — search, invite, requests
+- runFlow: login.yaml
 - launchApp:
     clearState: false
 - tapOn: "Friends"
 - assertVisible: "Friends"
 - assertVisible: "Find people"
-- tapOn: "Name or email"
+- tapOn:
+    id: "friends-search-input"
 - inputText: "Maestro"
-- tapOn: "Search"
+- tapOn:
+    id: "friends-search-submit"
 - extendedWaitUntil:
     visible: ".*@.*"
     timeout: 5000
     optional: true
 - tapOn: "Invite by email"
-- tapOn: "friend@example.com"
+- tapOn:
+    id: "friends-invite-email"
 - inputText: "maestro-friend+${MAESTRO_RUN_ID}@test.local"
-- tapOn: "Send"
-- assertVisible: "Invitation sent"
+- hideKeyboard
+- tapOn:
+    id: "friends-invite-submit"
+- assertVisible: "Invitation sent.*"

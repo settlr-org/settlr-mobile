@@ -141,6 +141,7 @@ export default function Friends() {
             <View style={s.searchBox}>
               <AntDesign name="search" size={16} color={colors.muted} />
               <TextInput
+                testID="friends-search-input"
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Name or email address"
@@ -153,6 +154,7 @@ export default function Friends() {
               />
             </View>
             <Pressable
+              testID="friends-search-submit"
               onPress={search}
               style={[s.searchBtn, searching && { opacity: 0.7 }]}
               disabled={searching}
@@ -187,6 +189,7 @@ export default function Friends() {
             <View style={s.inviteBox}>
               <AntDesign name="mail" size={16} color={colors.muted} />
               <TextInput
+                testID="friends-invite-email"
                 value={inviteEmail}
                 onChangeText={setInviteEmail}
                 placeholder="friend@example.com"
@@ -199,7 +202,11 @@ export default function Friends() {
                 returnKeyType="send"
               />
             </View>
-            <Pressable onPress={inviteByEmail} style={s.inviteBtn}>
+            <Pressable
+              testID="friends-invite-submit"
+              onPress={inviteByEmail}
+              style={s.inviteBtn}
+            >
               <AntDesign name="arrow-right" size={14} color={colors.white} />
               <Text style={s.inviteBtnText}>Send</Text>
             </Pressable>

@@ -1,6 +1,6 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +15,8 @@ import { useSession } from "../src/session";
 import { colors, shadow, type } from "../src/theme";
 
 export default function Login() {
+  const emailInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInput>(null);
   const { signIn } = useSession();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
@@ -65,7 +67,14 @@ export default function Login() {
                 We sent a verification link to {verificationEmail}. Open it,
                 then return here to sign in.
               </Text>
-              <Pressable onPress={() => setVerificationEmail("")}>
+              <Pressable
+                testID="auth-back-to-login"
+                onPress={() => {
+                  setVerificationEmail("");
+                  setMode("login");
+                  setPassword("");
+                }}
+              >
                 <Text style={s.switch}>Back to login</Text>
               </Pressable>
             </>
@@ -73,15 +82,19 @@ export default function Login() {
             <>
               {mode === "register" && (
                 <TextInput
+                  testID="register-name"
                   value={name}
                   onChangeText={setName}
                   placeholder="Your name"
                   placeholderTextColor={colors.muted}
                   style={s.input}
                   autoCapitalize="words"
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailInput.current?.focus()}
                 />
               )}
               <TextInput
+                testID="auth-email"
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email address"
@@ -89,17 +102,25 @@ export default function Login() {
                 style={s.input}
                 autoCapitalize="none"
                 keyboardType="email-address"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordInput.current?.focus()}
+                ref={emailInput}
               />
               <TextInput
+                testID="auth-password"
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Password"
                 placeholderTextColor={colors.muted}
                 style={s.input}
                 secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={() => void submit()}
+                ref={passwordInput}
               />
               {error ? <Text style={s.error}>{error}</Text> : null}
               <Pressable
+                testID="auth-submit"
                 style={({ pressed }) => [
                   s.button,
                   pressed && { opacity: 0.82 },
@@ -116,6 +137,7 @@ export default function Login() {
                 </Text>
               </Pressable>
               <Pressable
+                testID="auth-mode-switch"
                 onPress={() => setMode(mode === "login" ? "register" : "login")}
               >
                 <Text style={s.switch}>
