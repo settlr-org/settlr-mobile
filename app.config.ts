@@ -14,7 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: "com.settlr.app",
   },
-  plugins: ["expo-router", "expo-secure-store"],
+  plugins: ["expo-router", "expo-secure-store", "expo-font"],
   extra: {
     router: {},
     eas: {
