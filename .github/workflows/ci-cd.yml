@@ -33,6 +33,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      # Native E2E must exercise the disposable staging fixture, never the
+      # production API default baked into app.config.ts.
+      EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://settlrstagingapi.theswissknife.com' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,10 +80,12 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           disable-linux-hw-accel: false
           script: |
-            # Build debug APK locally (cached) and run Maestro
+            # Build a bundled APK and run Maestro. assembleDebug requires a
+            # Metro server at runtime and would otherwise show a redbox in CI.
             npm run export:web
-            # Use Expo prebuild + gradle if android/ exists, else EAS local
-            if [ -d android ]; then ./android/gradlew -p android assembleDebug; adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; else npx expo prebuild --platform android --clean && ./android/gradlew -p android assembleDebug && adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; fi
+            npx expo prebuild --platform android --clean
+            ./android/gradlew -p android assembleRelease
+            adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
             adb wait-for-device
             maestro test maestro/flows --format junit --output ./maestro/report.xml
