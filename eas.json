@@ -9,21 +9,21 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:18080"
+        "EXPO_PUBLIC_API_URL": "http://10.0.2.2:18081"
       }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://settlrapi.theswissknife.com"
+        "EXPO_PUBLIC_API_URL": "https://settlrstagingapi.theswissknife.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.settlr.theswissknife.com"
+        "EXPO_PUBLIC_API_URL": "https://settlrapi.theswissknife.com"
       }
     }
   },

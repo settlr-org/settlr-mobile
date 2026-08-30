@@ -2,7 +2,7 @@ name: Mobile CI and EAS update
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,9 +28,15 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
   android-e2e:
     needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Native E2E is limited to the disposable staging fixture; it never
+    # creates accounts or expenses against production.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      # Native E2E must exercise the disposable staging fixture, never the
+      # production API default baked into app.config.ts.
+      EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://settlrstagingapi.theswissknife.com' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,6 +47,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Enable KVM for the Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - name: Cache Maestro
@@ -59,27 +70,53 @@ jobs:
           target: google_apis
           arch: x86_64
           avd-name: settlr
-          ram-size: 4096M
+          # GitHub hosted runners can have less than 7 GB free after the SDK
+          # image is installed. The default userdata partition is ~7.4 GB and
+          # prevents the emulator from starting. The E2E fixture needs neither
+          # a large userdata disk nor 4 GB of guest RAM.
+          disk-size: 2048M
+          ram-size: 2048M
           heap-size: 512M
+          # `disk-size` is written to the AVD config by the action, but the
+          # emulator can otherwise retain the system-image default userdata
+          # partition (about 7.4 GB). Pass its launch flag as well.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics -partition-size 2048
+          # API 34's first userdata image requires ~7.4 GB. The GitHub image
+          # has less space after installing the Android SDK, so remove only
+          # unrelated preinstalled toolchains from this ephemeral runner.
+          pre-emulator-launch-script: |
+            sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/.ghcup
+            df -h "$RUNNER_TEMP"
+          disable-linux-hw-accel: false
           script: |
-            # Build debug APK locally (cached) and run Maestro
+            # Build a bundled APK and run Maestro. assembleDebug requires a
+            # Metro server at runtime and would otherwise show a redbox in CI.
             npm run export:web
-            # Use Expo prebuild + gradle if android/ exists, else EAS local
-            if [ -d android ]; then ./android/gradlew -p android assembleDebug; adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; else npx expo prebuild --platform android --clean && ./android/gradlew -p android assembleDebug && adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk; fi
+            npx expo prebuild --platform android --clean
+            ./android/gradlew -p android assembleRelease
+            adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
             adb wait-for-device
-            maestro test maestro/flows --format junit --output ./maestro/report.xml || true
+            maestro test maestro/flows --format junit --output ./maestro/report.xml
             cat ./maestro/report.xml
+      - name: Collect Android diagnostics
+        if: failure()
+        run: |
+          df -h
+          adb devices || true
+          adb logcat -d -t 500 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: maestro-report
-          path: maestro/report.xml
-  update-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: verify
+          path: |
+            maestro/report.xml
+          if-no-files-found: warn
+  update-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    needs: [verify, android-e2e]
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
     steps:
@@ -89,11 +126,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Publish production update
+      - name: Publish staging update
         if: env.EXPO_TOKEN != ''
-        run: npx eas-cli update --channel production --auto --non-interactive
+        run: npx eas-cli update --channel preview --auto --non-interactive
         env:
-          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://settlrapi.theswissknife.com' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://settlrstagingapi.theswissknife.com' }}
       - name: Report missing deployment credential
         if: env.EXPO_TOKEN == ''
-        run: echo "::notice::EXPO_TOKEN is not configured; verification passed, but the EAS production update was skipped."
+        run: echo "::error::EXPO_TOKEN is required to publish the staging update."

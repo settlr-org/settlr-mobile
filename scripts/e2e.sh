@@ -5,7 +5,7 @@ export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
 # Config
-API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:18080}"
+API_URL="${EXPO_PUBLIC_API_URL:-http://10.0.2.2:18081}"
 APK_PATH="${1:-./dist/development.apk}"
 FLOWS_DIR="${2:-./maestro/flows}"
 
@@ -19,8 +19,8 @@ if ! adb devices | grep -q "device$"; then
 fi
 
 # Check API (host or emulator loopback)
-if ! curl -sf http://localhost:18080/health >/dev/null 2>&1 && ! curl -sf "$API_URL/health" >/dev/null 2>&1; then
-  echo "✗ API not reachable at $API_URL or localhost:18080"
+if ! curl -sf http://localhost:18081/health >/dev/null 2>&1 && ! curl -sf "$API_URL/health" >/dev/null 2>&1; then
+  echo "✗ API not reachable at $API_URL or localhost:18081"
   echo "  Ensure: cd ../settlr-api && docker compose -f docker-compose.yml -f docker-compose.local.yml up -d"
   exit 1
 fi
