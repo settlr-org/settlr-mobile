@@ -1,6 +1,6 @@
 appId: com.settlr.app
 ---
-# Auth — register, verify, login, logout
+# Auth — registration must not create a session until the email is verified.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
@@ -18,10 +18,9 @@ appId: com.settlr.app
 - extendedWaitUntil:
     visible: "Verify your email"
     timeout: 10000
-# For local, token is in Mailpit http://localhost:8025 or leaked in JSON when APP_ENV=development
-# Pre-verify via host: docker exec settlr-postgres-local psql -U settlr -d settlr_local -c "update users set email_verified_at=now() where email like 'maestro%'"
+- assertVisible: "Back to login"
 - tapOn: "Back to login"
-- assertVisible: "Welcome back"
+- assertVisible: "Good to see you"
 - tapOn: "Email"
 - inputText: "maestro+${MAESTRO_RUN_ID}@test.local"
 - tapOn: "Password"

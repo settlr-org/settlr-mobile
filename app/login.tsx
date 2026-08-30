@@ -21,12 +21,17 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true);
     setError("");
     try {
-      await signIn(mode, { name, email, password });
+      const result = await signIn(mode, { name, email, password });
+      if ("verification_required" in result) {
+        setVerificationEmail(result.email);
+        return;
+      }
       router.replace("/(tabs)");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not sign in.");
@@ -48,58 +53,79 @@ export default function Login() {
         <View style={s.card}>
           <Text style={s.eyebrow}>WELCOME</Text>
           <Text style={s.title}>
-            {mode === "login" ? "Good to see you" : "Create your account"}
+            {verificationEmail
+              ? "Verify your email"
+              : mode === "login"
+                ? "Good to see you"
+                : "Create your account"}
           </Text>
-          {mode === "register" && (
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-              autoCapitalize="words"
-            />
+          {verificationEmail ? (
+            <>
+              <Text style={s.verifyText}>
+                We sent a verification link to {verificationEmail}. Open it,
+                then return here to sign in.
+              </Text>
+              <Pressable onPress={() => setVerificationEmail("")}>
+                <Text style={s.switch}>Back to login</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              {mode === "register" && (
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor={colors.muted}
+                  style={s.input}
+                  autoCapitalize="words"
+                />
+              )}
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email address"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Password"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+                secureTextEntry
+              />
+              {error ? <Text style={s.error}>{error}</Text> : null}
+              <Pressable
+                style={({ pressed }) => [
+                  s.button,
+                  pressed && { opacity: 0.82 },
+                ]}
+                onPress={submit}
+                disabled={busy}
+              >
+                <Text style={s.buttonText}>
+                  {busy
+                    ? "Please wait…"
+                    : mode === "login"
+                      ? "Sign in"
+                      : "Create account"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setMode(mode === "login" ? "register" : "login")}
+              >
+                <Text style={s.switch}>
+                  {mode === "login"
+                    ? "New to Settlr? Create an account"
+                    : "Already registered? Sign in"}
+                </Text>
+              </Pressable>
+            </>
           )}
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email address"
-            placeholderTextColor={colors.muted}
-            style={s.input}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor={colors.muted}
-            style={s.input}
-            secureTextEntry
-          />
-          {error ? <Text style={s.error}>{error}</Text> : null}
-          <Pressable
-            style={({ pressed }) => [s.button, pressed && { opacity: 0.82 }]}
-            onPress={submit}
-            disabled={busy}
-          >
-            <Text style={s.buttonText}>
-              {busy
-                ? "Please wait…"
-                : mode === "login"
-                  ? "Sign in"
-                  : "Create account"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setMode(mode === "login" ? "register" : "login")}
-          >
-            <Text style={s.switch}>
-              {mode === "login"
-                ? "New to Settlr? Create an account"
-                : "Already registered? Sign in"}
-            </Text>
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -176,4 +202,5 @@ const s = StyleSheet.create({
     marginTop: 18,
   },
   error: { color: colors.coral, fontSize: 11, marginBottom: 8 },
+  verifyText: { color: colors.muted, fontSize: 13, lineHeight: 20 },
 });

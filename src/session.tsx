@@ -5,7 +5,13 @@ import {
   useEffect,
   useState,
 } from "react";
-import { User, authenticate, logout, restoreUser } from "./api";
+import {
+  AuthenticationResult,
+  User,
+  authenticate,
+  logout,
+  restoreUser,
+} from "./api";
 
 type SessionContextValue = {
   user: User | null;
@@ -13,7 +19,7 @@ type SessionContextValue = {
   signIn: (
     mode: "login" | "register",
     values: { name?: string; email: string; password: string },
-  ) => Promise<void>;
+  ) => Promise<AuthenticationResult>;
   signOut: () => Promise<void>;
 };
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -30,8 +36,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     mode: "login" | "register",
     values: { name?: string; email: string; password: string },
   ) => {
-    const session = await authenticate(mode, values);
-    setUser(session.user ?? (await restoreUser()));
+    const result = await authenticate(mode, values);
+    if ("verification_required" in result) return result;
+    setUser(result.user ?? (await restoreUser()));
+    return result;
   };
   const signOut = async () => {
     await logout();

@@ -3,20 +3,7 @@ appId: com.settlr.app
 # Expense equal split — add and verify balances
 - launchApp:
     clearState: false
-- tapOn: "Groups"
-- tapOn: "Maestro Group"
-- extendedWaitUntil:
-    visible: "NET BALANCE"
-    timeout: 10000
-- tapOn:
-    point: "90%,10%"
-    optional: true
-- tapOn:
-    text: "Add expense"
-    optional: true
-- tapOn:
-    id: ".*plus.*"
-    optional: true
+- tapOn: "Add expense"
 - extendedWaitUntil:
     visible: "What did you pay for"
     timeout: 10000
