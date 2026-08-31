@@ -175,6 +175,11 @@ export default function Login() {
                     : "Already registered? Sign in"}
                 </Text>
               </Pressable>
+              {mode === "login" ? (
+                <Pressable onPress={() => router.push("/forgot-password")}>
+                  <Text style={s.switch}>Forgot your password?</Text>
+                </Pressable>
+              ) : null}
             </>
           )}
         </View>

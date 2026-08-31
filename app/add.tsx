@@ -27,6 +27,7 @@ export default function Add() {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [kind, setKind] = useState<"choose" | "shared">("choose");
   useEffect(() => {
     apiFetch<{ data: Group[] }>("/api/v1/groups")
       .then((r) => {
@@ -71,6 +72,46 @@ export default function Add() {
       setBusy(false);
     }
   };
+  if (kind === "choose") {
+    return (
+      <SafeAreaView style={s.safe}>
+        <View style={s.page}>
+          <View style={s.header}>
+            <Pressable
+              style={s.back}
+              onPress={() => router.back()}
+              accessibilityLabel="Close add expense"
+            >
+              <AntDesign name="arrow-left" size={20} color={colors.ink} />
+            </Pressable>
+            <Text style={s.headerTitle}>Add expense</Text>
+            <View style={s.back} />
+          </View>
+          <Text style={s.eyebrow}>NEW RECORD</Text>
+          <Text style={s.title}>Where does this belong?</Text>
+          <Pressable style={s.choice} onPress={() => setKind("shared")}>
+            <AntDesign name="team" size={23} color={colors.teal} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.choiceTitle}>Shared expense</Text>
+              <Text style={s.help}>Split an expense with a group.</Text>
+            </View>
+            <AntDesign name="right" size={14} color={colors.muted} />
+          </Pressable>
+          <Pressable
+            style={s.choice}
+            onPress={() => router.replace("/(tabs)/personal?new=1")}
+          >
+            <AntDesign name="wallet" size={23} color={colors.teal} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.choiceTitle}>Personal expense</Text>
+              <Text style={s.help}>Keep it in your personal budget.</Text>
+            </View>
+            <AntDesign name="right" size={14} color={colors.muted} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
   return (
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView
@@ -283,4 +324,16 @@ const s = StyleSheet.create({
     marginTop: 25,
   },
   ctaText: { color: colors.white, fontWeight: "800", fontSize: 13 },
+  choice: {
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 17,
+    padding: 17,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+    marginTop: 4,
+  },
+  choiceTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
 });
