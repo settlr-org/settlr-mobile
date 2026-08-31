@@ -47,8 +47,8 @@ export default function GroupManage() {
   const [currency, setCurrency] = useState("NPR");
   const [simplify, setSimplify] = useState(false);
   const [information, setInformation] = useState("");
-  const [invite, setInvite] = useState("");
   const [friendId, setFriendId] = useState("");
+  const [inviteFriendId, setInviteFriendId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
@@ -76,6 +76,11 @@ export default function GroupManage() {
       setSimplify(g.simplify_debts);
       setInformation(g.information || "");
       setFriendId(
+        f.data.find(
+          (friend) => !m.data.some((member) => member.id === friend.user_id),
+        )?.user_id || "",
+      );
+      setInviteFriendId(
         f.data.find(
           (friend) => !m.data.some((member) => member.id === friend.user_id),
         )?.user_id || "",
@@ -119,9 +124,8 @@ export default function GroupManage() {
     try {
       await apiFetch(`/api/v1/groups/${id}/invites`, {
         method: "POST",
-        body: JSON.stringify({ email: invite }),
+        body: JSON.stringify({ user_id: inviteFriendId }),
       });
-      setInvite("");
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not send invitation.",
@@ -234,17 +238,29 @@ export default function GroupManage() {
         )}
       </Card>
       <Card>
-        <Text style={s.section}>Invite a friend</Text>
-        <Field
-          label="Friend email"
-          value={invite}
-          onChangeText={setInvite}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        <Text style={s.section}>Send a group invitation</Text>
+        <Text style={s.meta}>
+          Invitations can only be sent to your accepted friends.
+        </Text>
+        <View style={s.friendChoices}>
+          {friends
+            .filter(
+              (friend) =>
+                !members.some((member) => member.id === friend.user_id),
+            )
+            .map((friend) => (
+              <Button
+                key={friend.user_id}
+                label={friend.name}
+                secondary={inviteFriendId !== friend.user_id}
+                onPress={() => setInviteFriendId(friend.user_id)}
+              />
+            ))}
+        </View>
         <Button
           label="Send invitation"
           secondary
+          disabled={!inviteFriendId}
           onPress={() => void sendInvite()}
         />
       </Card>

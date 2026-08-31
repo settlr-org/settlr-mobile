@@ -20,6 +20,7 @@ import {
 import type {
   Debt,
   Expense,
+  Friend,
   Group,
   Member,
   Settlement,
@@ -37,6 +38,7 @@ export default function GroupDetail() {
   const { user } = useSession();
   const [group, setGroup] = useState<Group>();
   const [members, setMembers] = useState<Member[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<Balances>();
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -50,9 +52,10 @@ export default function GroupDetail() {
   const [filter, setFilter] = useState("");
   const load = useCallback(async () => {
     try {
-      const [g, m, e, b, d, s] = await Promise.all([
+      const [g, m, f, e, b, d, s] = await Promise.all([
         apiFetch<Group>(`/api/v1/groups/${id}`),
         apiFetch<{ data: Member[] }>(`/api/v1/groups/${id}/members`),
+        apiFetch<{ data: Friend[] }>("/api/v1/friends"),
         apiFetch<{ data: Expense[] }>(
           `/api/v1/groups/${id}/expenses?limit=100`,
         ),
@@ -64,6 +67,7 @@ export default function GroupDetail() {
       ]);
       setGroup(g);
       setMembers(m.data);
+      setFriends(f.data);
       setExpenses(e.data);
       setBalances(b);
       setDebts(d.data);
@@ -340,6 +344,8 @@ export default function GroupDetail() {
       {memberOpen ? (
         <MemberComposer
           groupId={id}
+          friends={friends}
+          members={members}
           onClose={() => setMemberOpen(false)}
           onSaved={load}
         />
@@ -634,20 +640,27 @@ function SettlementComposer({
 }
 function MemberComposer({
   groupId,
+  friends,
+  members,
   onClose,
   onSaved,
 }: {
   groupId: string;
+  friends: Friend[];
+  members: Member[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
-  const [email, setEmail] = useState("");
+  const availableFriends = friends.filter(
+    (friend) => !members.some((member) => member.id === friend.user_id),
+  );
+  const [friendID, setFriendID] = useState(availableFriends[0]?.user_id || "");
   const [error, setError] = useState("");
   const save = async () => {
     try {
       await apiFetch(`/api/v1/groups/${groupId}/members`, {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ user_id: friendID }),
       });
       await onSaved();
       onClose();
@@ -662,17 +675,38 @@ function MemberComposer({
       <View style={styles.backdrop}>
         <Card>
           <Text style={s.sheetTitle}>Add member</Text>
-          <Field
-            label="Email address"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+          <Text style={s.meta}>
+            Choose an accepted friend to add to this group.
+          </Text>
+          <View style={s.chips}>
+            {availableFriends.map((friend) => (
+              <Pressable
+                key={friend.user_id}
+                onPress={() => setFriendID(friend.user_id)}
+                style={[s.chip, friendID === friend.user_id && s.chipActive]}
+              >
+                <Text
+                  style={[
+                    s.chipText,
+                    friendID === friend.user_id && s.chipTextActive,
+                  ]}
+                >
+                  {friend.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {!availableFriends.length ? (
+            <Text style={s.meta}>All of your friends are already members.</Text>
+          ) : null}
           {error ? <ErrorNotice message={error} /> : null}
           <View style={styles.dialogActions}>
             <Button label="Cancel" secondary onPress={onClose} />
-            <Button label="Add member" onPress={() => void save()} />
+            <Button
+              label="Add member"
+              disabled={!friendID}
+              onPress={() => void save()}
+            />
           </View>
         </Card>
       </View>
