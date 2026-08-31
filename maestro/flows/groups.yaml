@@ -1,0 +1,30 @@
+appId: com.settlr.app
+---
+# Groups — create and list
+- runFlow: login.yaml
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
+- tapOn: "Groups"
+- assertVisible: "Your groups"
+- tapOn:
+    id: "groups-create"
+# Create group modal
+- extendedWaitUntil:
+    visible: "New group"
+    timeout: 5000
+- tapOn:
+    id: "group-name"
+- inputText: "Maestro Group ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "group-description"
+- inputText: "E2E test group"
+- hideKeyboard
+- tapOn:
+    id: "group-submit"
+- extendedWaitUntil:
+    visible: "Maestro Group.*"
+    timeout: 10000
+- assertVisible: "Maestro Group.*"

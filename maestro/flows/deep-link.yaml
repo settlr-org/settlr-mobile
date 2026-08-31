@@ -1,0 +1,10 @@
+appId: com.settlr.app
+---
+# Deep links — settlr:// scheme
+- runFlow: login.yaml
+- launchApp:
+    clearState: false
+- openLink: "settlr://groups"
+- assertVisible: "Your groups"
+- openLink: "settlr://activity"
+- assertVisible: "Activity"

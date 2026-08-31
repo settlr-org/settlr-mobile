@@ -1,0 +1,16 @@
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { SessionProvider } from "../src/session";
+export default function Layout() {
+  return (
+    <SessionProvider>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#f3f5ef" },
+        }}
+      />
+    </SessionProvider>
+  );
+}

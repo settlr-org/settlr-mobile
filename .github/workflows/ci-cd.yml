@@ -1,0 +1,145 @@
+name: Mobile CI and EAS update
+on:
+  pull_request:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run export:web
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.example.com' }}
+  android-e2e:
+    needs: verify
+    # Native E2E is limited to the disposable staging fixture; it never
+    # creates accounts or expenses against production.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      # Native E2E must exercise the disposable staging fixture, never the
+      # production API default baked into app.config.ts.
+      EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://api-staging.example.com' }}
+      MAESTRO_EMAIL: ${{ secrets.MAESTRO_E2E_EMAIL }}
+      MAESTRO_PASSWORD: ${{ secrets.MAESTRO_E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Enable KVM for the Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Cache Maestro
+        uses: actions/cache@v4
+        with:
+          path: ~/.maestro
+          key: maestro-${{ runner.os }}-1.41.0
+      - name: Install Maestro
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Run Android E2E (emulator + Maestro)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: settlr
+          # GitHub hosted runners can have less than 7 GB free after the SDK
+          # image is installed. The default userdata partition is ~7.4 GB and
+          # prevents the emulator from starting. The E2E fixture needs neither
+          # a large userdata disk nor 4 GB of guest RAM.
+          disk-size: 2048M
+          ram-size: 2048M
+          heap-size: 512M
+          # `disk-size` is written to the AVD config by the action, but the
+          # emulator can otherwise retain the system-image default userdata
+          # partition (about 7.4 GB). Pass its launch flag as well.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics -partition-size 2048
+          # API 34's first userdata image requires ~7.4 GB. The GitHub image
+          # has less space after installing the Android SDK, so remove only
+          # unrelated preinstalled toolchains from this ephemeral runner.
+          pre-emulator-launch-script: |
+            sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/.ghcup
+            df -h "$RUNNER_TEMP"
+          disable-linux-hw-accel: false
+          script: |
+            # Build a bundled APK and run Maestro. assembleDebug requires a
+            # Metro server at runtime and would otherwise show a redbox in CI.
+            npm run export:web
+            npx expo prebuild --platform android --clean
+            # Build just the ABI used by this emulator. Keeping temporary
+            # native CMake/Prefab files on the runner filesystem avoids the
+            # small /tmp partition used by hosted runners.
+            mkdir -p "$RUNNER_TEMP/settlr-native-tmp"
+            env TMPDIR="$RUNNER_TEMP/settlr-native-tmp" GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 :react-native-worklets:externalNativeBuildRelease assembleRelease
+            adb install -r ./android/app/build/outputs/apk/release/app-release.apk
+            echo "Waiting for emulator..."
+            adb wait-for-device
+            # The disposable staging user is intentionally stored as secrets;
+            # registration cannot expose verification tokens outside local dev.
+            test -n "$MAESTRO_EMAIL" && test -n "$MAESTRO_PASSWORD"
+            maestro test maestro/flows --format junit --output ./maestro/report.xml
+            cat ./maestro/report.xml
+      - name: Collect Android diagnostics
+        if: failure()
+        run: |
+          df -h
+          adb devices || true
+          timeout 20s adb logcat -d -t 500 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maestro-report
+          path: |
+            maestro/report.xml
+          if-no-files-found: warn
+  update-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    needs: [verify, android-e2e]
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Publish staging update
+        if: env.EXPO_TOKEN != ''
+        run: npx eas-cli update --channel preview --auto --non-interactive
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.STAGING_API_URL || 'https://api-staging.example.com' }}
+      - name: Report missing deployment credential
+        if: env.EXPO_TOKEN == ''
+        run: echo "::error::EXPO_TOKEN is required to publish the staging update."
