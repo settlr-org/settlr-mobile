@@ -32,7 +32,13 @@ export default function Account() {
             value={user?.default_currency || "NPR"}
           />
           <Row icon="bell" title="Notifications" value="Enabled" />
-          <Row icon="lock" title="Security" value="Secure session" />
+          <Pressable onPress={() => router.push("/password")}>
+            <Row
+              icon="lock"
+              title="Password"
+              value={user?.has_password ? "Change password" : "Set a password"}
+            />
+          </Pressable>
           <Row icon="questioncircleo" title="Help" value="Settlr support" />
         </View>
         <Pressable style={s.logout} onPress={leave}>

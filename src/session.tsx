@@ -9,6 +9,7 @@ import {
   AuthenticationResult,
   User,
   authenticate,
+  authenticateWithGoogle,
   logout,
   restoreUser,
 } from "./api";
@@ -21,6 +22,8 @@ type SessionContextValue = {
     values: { name?: string; email: string; password: string },
   ) => Promise<AuthenticationResult>;
   signOut: () => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
+  refresh: () => Promise<void>;
 };
 const SessionContext = createContext<SessionContextValue | null>(null);
 
@@ -45,8 +48,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await logout();
     setUser(null);
   };
+  const signInWithGoogle = async (idToken: string) => {
+    const result = await authenticateWithGoogle(idToken);
+    setUser(result.user ?? (await restoreUser()));
+  };
+  const refresh = async () => {
+    setUser(await restoreUser());
+  };
   return (
-    <SessionContext.Provider value={{ user, loading, signIn, signOut }}>
+    <SessionContext.Provider
+      value={{ user, loading, signIn, signInWithGoogle, signOut, refresh }}
+    >
       {children}
     </SessionContext.Provider>
   );
