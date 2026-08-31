@@ -98,11 +98,11 @@ jobs:
             # Build just the ABI used by this emulator. Keeping temporary
             # native CMake/Prefab files on the runner filesystem avoids the
             # small /tmp partition used by hosted runners.
-            export TMPDIR="$RUNNER_TEMP/settlr-native-tmp"
-            mkdir -p "$TMPDIR"
-            export GRADLE_OPTS="-Djava.io.tmpdir=$TMPDIR"
-            export JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$TMPDIR"
-            ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 \
+            mkdir -p "$RUNNER_TEMP/settlr-native-tmp"
+            TMPDIR="$RUNNER_TEMP/settlr-native-tmp" \
+              GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" \
+              JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" \
+              ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 \
               :react-native-worklets:externalNativeBuildRelease assembleRelease
             adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
@@ -117,7 +117,7 @@ jobs:
         run: |
           df -h
           adb devices || true
-          adb logcat -d -t 500 || true
+          timeout 20s adb logcat -d -t 500 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
