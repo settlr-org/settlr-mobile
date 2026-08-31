@@ -2,7 +2,7 @@
 
 ## App foundation
 
-Use the current stable Expo SDK with Expo Router, strict TypeScript, React Native, `@nabinkhanal00/settlr-native-ui`, TanStack Query, React Hook Form, Zod, Expo SecureStore, Expo SQLite with SQLCipher, Expo ImagePicker/Camera, and Expo Notifications. Expo Router supplies typed file-based routes and deep links across Android, iOS, and web ([documentation](https://docs.expo.dev/router/introduction/)); SecureStore is for small secrets, not ledgers ([documentation](https://docs.expo.dev/versions/latest/sdk/securestore/)).
+Use the current stable Expo SDK with Expo Router, strict TypeScript, React Native, `@settlr-org/settlr-native-ui`, TanStack Query, React Hook Form, Zod, Expo SecureStore, Expo SQLite with SQLCipher, Expo ImagePicker/Camera, and Expo Notifications. Expo Router supplies typed file-based routes and deep links across Android, iOS, and web ([documentation](https://docs.expo.dev/router/introduction/)); SecureStore is for small secrets, not ledgers ([documentation](https://docs.expo.dev/versions/latest/sdk/securestore/)).
 
 Reserve application identifier `com.settlr.app`, URL scheme `settlr`, and universal/app links under `https://settlr.theswissknife.com`. Use the API bearer-token endpoints; native fetch has no browser CORS requirement. Store refresh tokens in SecureStore and keep access tokens memory-only.
 
