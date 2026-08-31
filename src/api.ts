@@ -53,7 +53,7 @@ export type RegistrationPending = {
   verification_required: true;
 };
 export type AuthenticationResult = Session | RegistrationPending;
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,

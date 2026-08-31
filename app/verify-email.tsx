@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text } from "react-native";
 import { apiFetch } from "../src/api";
+import { getPendingInvite } from "../src/pendingInvite";
 import { Button, ErrorNotice, Loading, PageTitle, Screen } from "../src/ui";
 
 export default function VerifyEmail() {
@@ -44,7 +45,13 @@ export default function VerifyEmail() {
       {state !== "loading" ? (
         <Button
           label="Go to sign in"
-          onPress={() => router.replace("/login")}
+          onPress={() =>
+            void getPendingInvite().then((invite) =>
+              router.replace(
+                invite ? `/login?next=/invite/${invite}` : "/login",
+              ),
+            )
+          }
         />
       ) : null}
     </Screen>

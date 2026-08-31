@@ -1,13 +1,17 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { apiFetch } from "../../src/api";
+import { useEffect, useState } from "react";
+import { apiFetch, ApiError } from "../../src/api";
 import { useSession } from "../../src/session";
+import { clearPendingInvite, savePendingInvite } from "../../src/pendingInvite";
 import { Button, ErrorNotice, PageTitle, Screen } from "../../src/ui";
 export default function Invite() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const { user } = useSession();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (token) void savePendingInvite(token);
+  }, [token]);
   const accept = async () => {
     if (!user) {
       router.replace(`/login?next=${encodeURIComponent(`/invite/${token}`)}`);
@@ -20,12 +24,16 @@ export default function Invite() {
           `/api/v1/invites/${encodeURIComponent(token)}/accept`,
           { method: "POST" },
         );
+        await clearPendingInvite();
         router.replace(`/groups/${result.group_id}`);
-      } catch {
+      } catch (groupError) {
+        if (!(groupError instanceof ApiError) || groupError.status !== 404)
+          throw groupError;
         const result = await apiFetch<{ user_id: string }>(
           `/api/v1/friend-invites/${encodeURIComponent(token)}/accept`,
           { method: "POST" },
         );
+        await clearPendingInvite();
         router.replace(`/friends/${result.user_id}`);
       }
     } catch (cause) {

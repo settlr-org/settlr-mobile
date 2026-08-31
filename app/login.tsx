@@ -1,5 +1,5 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -13,9 +13,11 @@ import {
 } from "react-native";
 import { useSession } from "../src/session";
 import { GoogleSignIn, googleOAuthEnabled } from "../src/GoogleSignIn";
+import { getPendingInvite } from "../src/pendingInvite";
 import { colors, shadow, type } from "../src/theme";
 
 export default function Login() {
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const emailInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
   const { signIn, signInWithGoogle } = useSession();
@@ -26,6 +28,16 @@ export default function Login() {
   const [error, setError] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [busy, setBusy] = useState(false);
+  const destination = async () => {
+    if (
+      typeof next === "string" &&
+      next.startsWith("/") &&
+      !next.startsWith("//")
+    )
+      return next;
+    const token = await getPendingInvite();
+    return token ? `/invite/${token}` : "/(tabs)";
+  };
   const submit = async () => {
     setBusy(true);
     setError("");
@@ -35,7 +47,7 @@ export default function Login() {
         setVerificationEmail(result.email);
         return;
       }
-      router.replace("/(tabs)");
+      router.replace(await destination());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not sign in.");
     } finally {
@@ -47,7 +59,7 @@ export default function Login() {
     setError("");
     try {
       await signInWithGoogle(idToken);
-      router.replace("/(tabs)");
+      router.replace(await destination());
     } catch (e) {
       setError(
         e instanceof Error
