@@ -99,11 +99,7 @@ jobs:
             # native CMake/Prefab files on the runner filesystem avoids the
             # small /tmp partition used by hosted runners.
             mkdir -p "$RUNNER_TEMP/settlr-native-tmp"
-            TMPDIR="$RUNNER_TEMP/settlr-native-tmp" \
-              GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" \
-              JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" \
-              ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 \
-              :react-native-worklets:externalNativeBuildRelease assembleRelease
+            env TMPDIR="$RUNNER_TEMP/settlr-native-tmp" GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp" ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 :react-native-worklets:externalNativeBuildRelease assembleRelease
             adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
             adb wait-for-device
