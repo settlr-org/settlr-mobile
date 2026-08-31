@@ -17,6 +17,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       bundleIdentifier: "com.settlr.app",
       associatedDomains: ["applinks:settlr.theswissknife.com"],
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       package: "com.settlr.app",
