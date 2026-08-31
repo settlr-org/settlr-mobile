@@ -45,6 +45,7 @@ export type User = {
   name: string;
   email: string;
   default_currency?: string;
+  has_password?: boolean;
 };
 type Session = {
   access_token: string;
@@ -172,6 +173,21 @@ export async function authenticate(
   if ("verification_required" in result) return result;
   await saveSession(result);
   return result;
+}
+
+export async function authenticateWithGoogle(
+  idToken: string,
+): Promise<Session> {
+  const response = await fetchWithTimeout(`${API_URL}/api/v1/auth/google`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  if (!response.ok)
+    throw new ApiError(response.status, await errorMessage(response));
+  const session = (await response.json()) as Session;
+  await saveSession(session);
+  return session;
 }
 
 export async function logout() {

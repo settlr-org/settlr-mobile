@@ -12,12 +12,13 @@ import {
   View,
 } from "react-native";
 import { useSession } from "../src/session";
+import { GoogleSignIn, googleOAuthEnabled } from "../src/GoogleSignIn";
 import { colors, shadow, type } from "../src/theme";
 
 export default function Login() {
   const emailInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
-  const { signIn } = useSession();
+  const { signIn, signInWithGoogle } = useSession();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,6 +38,22 @@ export default function Login() {
       router.replace("/(tabs)");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not sign in.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const googleSignIn = async (idToken: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      await signInWithGoogle(idToken);
+      router.replace("/(tabs)");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Google sign-in could not be completed.",
+      );
     } finally {
       setBusy(false);
     }
@@ -80,6 +97,18 @@ export default function Login() {
             </>
           ) : (
             <>
+              <GoogleSignIn
+                busy={busy}
+                onToken={(token) => void googleSignIn(token)}
+                onError={setError}
+              />
+              {googleOAuthEnabled ? (
+                <View style={s.divider}>
+                  <View style={s.dividerLine} />
+                  <Text style={s.dividerText}>or continue with email</Text>
+                  <View style={s.dividerLine} />
+                </View>
+              ) : null}
               {mode === "register" && (
                 <TextInput
                   testID="register-name"
@@ -208,6 +237,14 @@ const s = StyleSheet.create({
     color: colors.ink,
     marginBottom: 11,
   },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
+  dividerText: { fontSize: 10, color: colors.muted },
   button: {
     backgroundColor: colors.teal,
     borderRadius: 13,
