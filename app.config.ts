@@ -16,9 +16,34 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: "automatic",
     ios: {
       bundleIdentifier: "com.settlr.app",
+      associatedDomains: ["applinks:settlr.theswissknife.com"],
     },
     android: {
       package: "com.settlr.app",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "settlr.theswissknife.com",
+              pathPrefix: "/verify-email",
+            },
+            {
+              scheme: "https",
+              host: "settlr.theswissknife.com",
+              pathPrefix: "/reset-password",
+            },
+            {
+              scheme: "https",
+              host: "settlr.theswissknife.com",
+              pathPrefix: "/invite",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     plugins: [
       "expo-router",

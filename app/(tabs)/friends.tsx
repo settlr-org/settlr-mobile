@@ -1,5 +1,5 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -219,7 +219,11 @@ export default function Friends() {
             <Text style={s.badge}>{friends.length} connected</Text>
           </View>
           {friends.map((f) => (
-            <View style={s.friendCard} key={f.user_id}>
+            <Pressable
+              style={s.friendCard}
+              key={f.user_id}
+              onPress={() => router.push(`/friends/${f.user_id}`)}
+            >
               <View style={s.avatar}>
                 <Text style={s.avatarText}>{initials(f.name)}</Text>
               </View>
@@ -230,7 +234,7 @@ export default function Friends() {
               <View style={s.statusPill}>
                 <Text style={s.statusPillText}>Connected</Text>
               </View>
-            </View>
+            </Pressable>
           ))}
           {!friends.length ? (
             <View style={s.empty}>

@@ -1,5 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import type { User } from "./types";
+
+export type { User } from "./types";
 
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? "https://settlrapi.theswissknife.com"
@@ -40,13 +43,6 @@ const storage = {
   },
 };
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  default_currency?: string;
-  has_password?: boolean;
-};
 type Session = {
   access_token: string;
   refresh_token: string;
@@ -151,8 +147,35 @@ export async function apiFetch<T>(
     return apiFetch<T>(path, init, false);
   if (!response.ok)
     throw new ApiError(response.status, await errorMessage(response));
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
+
+export async function apiUpload<T>(
+  path: string,
+  file: { uri: string; name: string; type: string },
+): Promise<T> {
+  const form = new FormData();
+  form.append("file", file as never);
+  return apiFetch<T>(path, { method: "POST", body: form });
+}
+
+export async function apiDownload(path: string): Promise<Blob> {
+  const token = await storage.getItemAsync(ACCESS);
+  const headers = new Headers({ Accept: "application/octet-stream" });
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  let response = await fetchWithTimeout(`${API_URL}${path}`, { headers });
+  if (response.status === 401 && (await refresh())) {
+    const refreshed = await storage.getItemAsync(ACCESS);
+    if (refreshed) headers.set("Authorization", `Bearer ${refreshed}`);
+    response = await fetchWithTimeout(`${API_URL}${path}`, { headers });
+  }
+  if (!response.ok)
+    throw new ApiError(response.status, await errorMessage(response));
+  return response.blob();
+}
+
+export const apiBaseUrl = () => API_URL;
 
 export async function authenticate(
   mode: "login" | "register",

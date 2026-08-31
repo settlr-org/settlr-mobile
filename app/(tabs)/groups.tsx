@@ -1,5 +1,5 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -28,6 +28,8 @@ export default function Groups() {
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState("NPR");
+  const [groupType, setGroupType] = useState("OTHER");
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
@@ -47,11 +49,18 @@ export default function Groups() {
     try {
       await apiFetch("/api/v1/groups", {
         method: "POST",
-        body: JSON.stringify({ name, description, currency: "NPR" }),
+        body: JSON.stringify({
+          name,
+          description,
+          currency: currency.toUpperCase(),
+          group_type: groupType,
+        }),
       });
       setShow(false);
       setName("");
       setDescription("");
+      setCurrency("NPR");
+      setGroupType("OTHER");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create group.");
@@ -89,7 +98,11 @@ export default function Groups() {
           <ActivityIndicator color={colors.teal} />
         ) : (
           groups.map((g, i) => (
-            <View style={s.card} key={g.id}>
+            <Pressable
+              style={s.card}
+              key={g.id}
+              onPress={() => router.push(`/groups/${g.id}`)}
+            >
               <View
                 style={[s.icon, i % 2 === 1 && { backgroundColor: "#f8ead4" }]}
               >
@@ -109,7 +122,7 @@ export default function Groups() {
                 </Text>
               </View>
               <AntDesign name="right" color={colors.muted} size={14} />
-            </View>
+            </Pressable>
           ))
         )}
         {!loading && !groups.length ? (
@@ -139,6 +152,30 @@ export default function Groups() {
               placeholderTextColor={colors.muted}
               style={s.input}
             />
+            <TextInput
+              value={currency}
+              onChangeText={setCurrency}
+              placeholder="Currency (e.g. NPR)"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="characters"
+              maxLength={3}
+              style={s.input}
+            />
+            <View style={s.typeRow}>
+              {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
+                <Pressable
+                  key={item}
+                  onPress={() => setGroupType(item)}
+                  style={[s.typeChip, groupType === item && s.typeChipActive]}
+                >
+                  <Text
+                    style={[s.typeText, groupType === item && s.typeTextActive]}
+                  >
+                    {item}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
             <TextInput
               testID="group-description"
               value={description}
@@ -239,6 +276,17 @@ const s = StyleSheet.create({
     padding: 20,
   },
   modal: { backgroundColor: colors.paper, borderRadius: 24, padding: 22 },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  typeChip: {
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
+  typeChipActive: { backgroundColor: colors.teal, borderColor: colors.teal },
+  typeText: { color: colors.ink, fontSize: 9, fontWeight: "800" },
+  typeTextActive: { color: colors.white },
   modalHead: {
     flexDirection: "row",
     justifyContent: "space-between",

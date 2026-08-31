@@ -45,30 +45,39 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="personal"
+          options={{
+            title: "Personal",
+            tabBarIcon: ({ color }) => (
+              <AntDesign name="pie-chart" color={color} size={22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{
+            title: "More",
+            tabBarIcon: ({ color }) => (
+              <AntDesign name="appstore" color={color} size={22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="friends"
           options={{
-            title: "Friends",
-            tabBarIcon: ({ color }) => (
-              <AntDesign name="contacts" color={color} size={22} />
-            ),
+            href: null,
           }}
         />
         <Tabs.Screen
           name="activity"
           options={{
-            title: "Activity",
-            tabBarIcon: ({ color }) => (
-              <AntDesign name="bars" color={color} size={22} />
-            ),
+            href: null,
           }}
         />
         <Tabs.Screen
           name="account"
           options={{
-            title: "Account",
-            tabBarIcon: ({ color }) => (
-              <AntDesign name="setting" color={color} size={22} />
-            ),
+            href: null,
           }}
         />
       </Tabs>
