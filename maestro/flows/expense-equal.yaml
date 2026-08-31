@@ -6,6 +6,10 @@ appId: com.settlr.app
     clearState: false
 - tapOn: "Add expense"
 - extendedWaitUntil:
+    visible: "Where does this belong\?"
+    timeout: 10000
+- tapOn: "Shared expense"
+- extendedWaitUntil:
     visible: "What did you pay for?"
     timeout: 10000
 - tapOn:

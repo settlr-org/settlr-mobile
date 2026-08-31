@@ -13,5 +13,6 @@ flowsOrder:
   - login.yaml
   - groups.yaml
   - expense-equal.yaml
+  - personal.yaml
   - friends.yaml
   - deep-link.yaml

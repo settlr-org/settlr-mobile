@@ -90,6 +90,7 @@ export default function Personal() {
         description="Track spending that belongs only to you."
         action={
           <Pressable
+            testID="personal-add"
             accessibilityLabel="Add personal expense"
             style={local.add}
             onPress={() => setEditor(null)}
@@ -268,12 +269,14 @@ function ExpenseEditor({
           </Text>
           <Field
             label="Description"
+            testID="personal-description"
             value={description}
             onChangeText={setDescription}
             placeholder="Groceries, coffee, transport…"
           />
           <Field
             label="Amount"
+            testID="personal-amount"
             value={amount}
             onChangeText={setAmount}
             keyboardType="decimal-pad"
@@ -281,12 +284,14 @@ function ExpenseEditor({
           />
           <Field
             label="Date"
+            testID="personal-date"
             value={date}
             onChangeText={setDate}
             placeholder="YYYY-MM-DD"
           />
           <Field
             label="Notes"
+            testID="personal-notes"
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -324,6 +329,7 @@ function ExpenseEditor({
           <View style={styles.dialogActions}>
             <Button label="Cancel" secondary onPress={onClose} />
             <Button
+              testID="personal-submit"
               label={busy ? "Saving…" : "Save expense"}
               disabled={busy}
               onPress={() => void save()}

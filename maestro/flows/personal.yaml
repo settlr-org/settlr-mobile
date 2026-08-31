@@ -1,0 +1,25 @@
+appId: com.settlr.app
+---
+# Personal spending — add a private expense from the native Personal tab.
+- runFlow: login.yaml
+- launchApp:
+    clearState: false
+- tapOn: "Personal"
+- extendedWaitUntil:
+    visible: "Personal"
+    timeout: 10000
+- tapOn:
+    id: "personal-add"
+- assertVisible: "Add personal expense"
+- tapOn:
+    id: "personal-description"
+- inputText: "Maestro Personal ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "personal-amount"
+- inputText: "12.34"
+- hideKeyboard
+- tapOn:
+    id: "personal-submit"
+- extendedWaitUntil:
+    visible: "Maestro Personal.*"
+    timeout: 10000
