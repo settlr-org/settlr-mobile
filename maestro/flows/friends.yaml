@@ -4,9 +4,20 @@ appId: com.settlr.app
 - runFlow: login.yaml
 - launchApp:
     clearState: false
+# Wait for the signed-in shell, then use the actual More-hub navigation.
+# The dashboard itself has a "Friends" heading, so tapping that text is not
+# a reliable navigation action.
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
+- tapOn: "More"
+- extendedWaitUntil:
+    visible: "Everything else in your Settlr workspace."
+    timeout: 5000
 - tapOn: "Friends"
-- assertVisible: "Friends"
-- assertVisible: "Find people"
+- extendedWaitUntil:
+    visible: "Find people"
+    timeout: 5000
 - tapOn:
     id: "friends-search-input"
 - inputText: "Maestro"

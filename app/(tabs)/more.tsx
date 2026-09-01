@@ -9,9 +9,12 @@ import type { Notification } from "../../src/types";
 import { initials } from "../../src/types";
 import { useSession } from "../../src/session";
 
+// Parity with web AppShell navigation: friends/activity are first-class on web,
+// on mobile they are accessible via this More hub plus direct deep links /friends /activity /invites.
 const items = [
   ["Friends", "contacts", "/friends"],
   ["Activity", "bars", "/activity"],
+  ["Invites", "mail", "/invites"],
   ["Search", "search1", "/search"],
   ["Notifications", "bells", "/notifications"],
   ["Settings", "setting", "/settings"],

@@ -11,6 +11,7 @@ env:
 flowsOrder:
   - auth.yaml
   - login.yaml
+  - empty-shared-expense.yaml
   - groups.yaml
   - expense-equal.yaml
   - personal.yaml

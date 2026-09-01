@@ -1,18 +1,20 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../../src/api";
 import { colors, shadow, type } from "../../src/theme";
 type Group = {
@@ -22,8 +24,19 @@ type Group = {
   currency: string;
   group_type: string;
 };
+type OverviewBalance = {
+  data: { group_id: string; balance: number; currency: string }[];
+};
+const money = (amount: number, currency: string) =>
+  new Intl.NumberFormat("en-NP", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(amount / 100);
 export default function Groups() {
+  const { new: createOnOpen } = useLocalSearchParams<{ new?: string }>();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
@@ -33,7 +46,19 @@ export default function Groups() {
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     try {
-      setGroups((await apiFetch<{ data: Group[] }>("/api/v1/groups")).data);
+      const [groupResponse, balanceResponse] = await Promise.all([
+        apiFetch<{ data: Group[] }>("/api/v1/groups"),
+        apiFetch<OverviewBalance>("/api/v1/me/balances"),
+      ]);
+      setGroups(groupResponse.data);
+      setBalances(
+        Object.fromEntries(
+          balanceResponse.data.map((balance) => [
+            balance.group_id,
+            balance.balance,
+          ]),
+        ),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load groups.");
     } finally {
@@ -45,6 +70,9 @@ export default function Groups() {
       void load();
     }, [load]),
   );
+  useEffect(() => {
+    if (createOnOpen === "1") setShow(true);
+  }, [createOnOpen]);
   const create = async () => {
     try {
       await apiFetch("/api/v1/groups", {
@@ -86,44 +114,66 @@ export default function Groups() {
           </View>
           <Pressable
             testID="groups-create"
-            style={s.add}
+            style={s.createGroup}
             onPress={() => setShow(true)}
             accessibilityLabel="Create group"
           >
-            <AntDesign name="plus" size={20} color={colors.white} />
+            <AntDesign name="plus" size={14} color={colors.teal} />
+            <Text style={s.createGroupText}>New group</Text>
           </Pressable>
         </View>
         {error ? <Text style={s.error}>{error}</Text> : null}
         {loading ? (
           <ActivityIndicator color={colors.teal} />
         ) : (
-          groups.map((g, i) => (
-            <Pressable
-              style={s.card}
-              key={g.id}
-              onPress={() => router.push(`/groups/${g.id}`)}
-            >
-              <View
-                style={[s.icon, i % 2 === 1 && { backgroundColor: "#f8ead4" }]}
+          groups.map((g, i) => {
+            const balance = balances[g.id] || 0;
+            return (
+              <Pressable
+                style={s.card}
+                key={g.id}
+                onPress={() => router.push(`/groups/${g.id}`)}
               >
-                <AntDesign
-                  name={g.group_type === "TRIP" ? "environment" : "appstore"}
-                  size={21}
-                  color={i % 2 === 1 ? colors.gold : colors.teal}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.kind}>
-                  {g.group_type || "GROUP"} · {g.currency}
-                </Text>
-                <Text style={s.name}>{g.name}</Text>
-                <Text style={s.muted} numberOfLines={1}>
-                  {g.description || "A shared Settlr ledger"}
-                </Text>
-              </View>
-              <AntDesign name="right" color={colors.muted} size={14} />
-            </Pressable>
-          ))
+                <View
+                  style={[
+                    s.icon,
+                    i % 2 === 1 && { backgroundColor: "#f8ead4" },
+                  ]}
+                >
+                  <AntDesign
+                    name={g.group_type === "TRIP" ? "environment" : "appstore"}
+                    size={21}
+                    color={i % 2 === 1 ? colors.gold : colors.teal}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.kind}>
+                    {g.group_type || "GROUP"} · {g.currency}
+                  </Text>
+                  <Text style={s.name} numberOfLines={1}>
+                    {g.name}
+                  </Text>
+                  <Text style={s.muted} numberOfLines={1}>
+                    {g.description || "A shared Settlr ledger"}
+                  </Text>
+                </View>
+                <View style={s.balance}>
+                  <Text style={s.balanceLabel}>
+                    {balance > 0
+                      ? "YOU GET"
+                      : balance < 0
+                        ? "YOU OWE"
+                        : "SETTLED"}
+                  </Text>
+                  <Text
+                    style={[s.balanceAmount, balance < 0 && s.balanceNegative]}
+                  >
+                    {money(Math.abs(balance), g.currency)}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })
         )}
         {!loading && !groups.length ? (
           <View style={s.empty}>
@@ -135,65 +185,81 @@ export default function Groups() {
           </View>
         ) : null}
       </ScrollView>
-      <Modal visible={show} transparent animationType="fade">
-        <View style={s.backdrop}>
-          <View style={s.modal}>
-            <View style={s.modalHead}>
-              <Text style={s.modalTitle}>New group</Text>
-              <Pressable onPress={() => setShow(false)}>
-                <AntDesign name="close" size={20} color={colors.muted} />
+      <Modal
+        visible={show}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShow(false)}
+      >
+        <KeyboardAvoidingView
+          style={s.backdrop}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <ScrollView
+            contentContainerStyle={s.modalScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={s.modal}>
+              <View style={s.modalHead}>
+                <Text style={s.modalTitle}>New group</Text>
+                <Pressable onPress={() => setShow(false)}>
+                  <AntDesign name="close" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+              <TextInput
+                testID="group-name"
+                value={name}
+                onChangeText={setName}
+                placeholder="Group name"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+              />
+              <TextInput
+                value={currency}
+                onChangeText={setCurrency}
+                placeholder="Currency (e.g. NPR)"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="characters"
+                maxLength={3}
+                style={s.input}
+              />
+              <View style={s.typeRow}>
+                {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setGroupType(item)}
+                    style={[s.typeChip, groupType === item && s.typeChipActive]}
+                  >
+                    <Text
+                      style={[
+                        s.typeText,
+                        groupType === item && s.typeTextActive,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                testID="group-description"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Description (optional)"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+              />
+              <Pressable
+                testID="group-submit"
+                style={s.cta}
+                onPress={create}
+                disabled={!name.trim()}
+              >
+                <Text style={s.ctaText}>Create group</Text>
               </Pressable>
             </View>
-            <TextInput
-              testID="group-name"
-              value={name}
-              onChangeText={setName}
-              placeholder="Group name"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-            />
-            <TextInput
-              value={currency}
-              onChangeText={setCurrency}
-              placeholder="Currency (e.g. NPR)"
-              placeholderTextColor={colors.muted}
-              autoCapitalize="characters"
-              maxLength={3}
-              style={s.input}
-            />
-            <View style={s.typeRow}>
-              {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => setGroupType(item)}
-                  style={[s.typeChip, groupType === item && s.typeChipActive]}
-                >
-                  <Text
-                    style={[s.typeText, groupType === item && s.typeTextActive]}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              testID="group-description"
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Description (optional)"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-            />
-            <Pressable
-              testID="group-submit"
-              style={s.cta}
-              onPress={create}
-              disabled={!name.trim()}
-            >
-              <Text style={s.ctaText}>Create group</Text>
-            </Pressable>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -220,14 +286,19 @@ const s = StyleSheet.create({
     marginTop: 3,
   },
   muted: { color: colors.muted, fontSize: 10, marginTop: 4 },
-  add: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.teal,
+  createGroup: {
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    backgroundColor: colors.paper,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 11,
     alignItems: "center",
     justifyContent: "center",
   },
+  createGroupText: { color: colors.teal, fontSize: 10, fontWeight: "800" },
   card: {
     backgroundColor: colors.paper,
     borderRadius: 18,
@@ -240,6 +311,20 @@ const s = StyleSheet.create({
     alignItems: "center",
     ...shadow,
   },
+  balance: { alignItems: "flex-end", minWidth: 68 },
+  balanceLabel: {
+    color: colors.muted,
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+  },
+  balanceAmount: {
+    color: colors.teal,
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 3,
+  },
+  balanceNegative: { color: colors.coral },
   icon: {
     width: 44,
     height: 44,
@@ -272,6 +357,9 @@ const s = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(8,20,16,.6)",
+  },
+  modalScroll: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
