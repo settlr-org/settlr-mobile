@@ -88,7 +88,13 @@ export default function ExpenseDetail() {
       <PageTitle
         eyebrow={group.name}
         title={expense.description}
-        description={`${expense.expense_date} · ${money(expense.amount, expense.currency)}`}
+        description={new Date(
+          `${expense.expense_date}T00:00:00`,
+        ).toLocaleDateString("en-NP", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}
         action={
           <Pressable style={s.icon} onPress={() => setEditing(true)}>
             <AntDesign name="edit" size={18} color={colors.teal} />
@@ -96,6 +102,17 @@ export default function ExpenseDetail() {
         }
       />
       {error ? <ErrorNotice message={error} retry={() => void load()} /> : null}
+      <Card style={s.summary}>
+        <Text style={s.summaryLabel}>TOTAL EXPENSE</Text>
+        <Text style={s.summaryAmount}>
+          {money(expense.amount, expense.currency)}
+        </Text>
+        <Text style={s.summaryMeta}>
+          Paid by{" "}
+          {members.find((member) => member.id === expense.paid_by)?.name ||
+            "a group member"}
+        </Text>
+      </Card>
       <Card>
         <Text style={s.section}>Split</Text>
         {expense.splits?.map((split) => (
@@ -111,7 +128,13 @@ export default function ExpenseDetail() {
                   ? `${split.percentage}%`
                   : expense.split_mode === "SHARES"
                     ? `${split.shares} shares`
-                    : "Equal split"}
+                    : `${money(
+                        Math.round(
+                          expense.amount /
+                            Math.max(expense.splits?.length || 1, 1),
+                        ),
+                        expense.currency,
+                      )} each`}
             </Text>
           </View>
         ))}
@@ -454,6 +477,15 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   section: { color: colors.ink, fontFamily: "serif", fontSize: 22 },
+  summary: { backgroundColor: colors.sage, borderColor: "#C4DDD1" },
+  summaryLabel: {
+    color: colors.muted,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    fontWeight: "800",
+  },
+  summaryAmount: { color: colors.teal, fontFamily: "serif", fontSize: 34 },
+  summaryMeta: { color: colors.ink, fontSize: 13, fontWeight: "800" },
   dialog: { color: colors.ink, fontFamily: "serif", fontSize: 25 },
   row: {
     minHeight: 44,

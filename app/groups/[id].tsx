@@ -108,11 +108,14 @@ export default function GroupDetail() {
   const visible = expenses.filter((expense) =>
     expense.description.toLowerCase().includes(filter.toLowerCase()),
   );
+  const myBalance =
+    balances?.data.find((item) => item.user_id === user?.id)?.amount || 0;
   return (
     <Screen>
       <PageTitle
         eyebrow="SHARED LEDGER"
         title={group.name}
+        titleNumberOfLines={2}
         description={`${group.group_type} · ${group.currency} · ${members.length} members`}
         action={
           <Pressable
@@ -135,13 +138,15 @@ export default function GroupDetail() {
           </Text>
         </Card>
         <Card style={{ flex: 1 }}>
-          <Text style={s.metricLabel}>YOUR BALANCE</Text>
-          <Text style={s.metric}>
-            {money(
-              balances?.data.find((item) => item.user_id === user?.id)
-                ?.amount || 0,
-              group.currency,
-            )}
+          <Text style={s.metricLabel}>
+            {myBalance > 0
+              ? "YOU ARE OWED"
+              : myBalance < 0
+                ? "YOU OWE"
+                : "YOU'RE SETTLED"}
+          </Text>
+          <Text style={[s.metric, myBalance < 0 && s.metricNegative]}>
+            {money(Math.abs(myBalance), group.currency)}
           </Text>
         </Card>
       </View>
@@ -245,7 +250,11 @@ export default function GroupDetail() {
                 style={s.row}
               >
                 <Text style={[s.meta, { flex: 1 }]}>
-                  {names[debt.from_user]} pays {names[debt.to_user]}
+                  {debt.from_user === user?.id
+                    ? `You pay ${names[debt.to_user]}`
+                    : debt.to_user === user?.id
+                      ? `${names[debt.from_user]} pays you`
+                      : `${names[debt.from_user]} pays ${names[debt.to_user]}`}
                 </Text>
                 <Text style={s.amount}>
                   {money(debt.amount, group.currency)}
@@ -399,6 +408,24 @@ function ExpenseComposer({
             ? { user_id: id, shares: value }
             : { user_id: id };
     });
+    if (
+      mode === "EXACT" &&
+      splits.reduce((sum, split) => sum + (split.amount || 0), 0) !== cents
+    ) {
+      setError("Exact amounts must add up to the expense total.");
+      return;
+    }
+    if (
+      mode === "PERCENTAGE" &&
+      splits.reduce((sum, split) => sum + (split.percentage || 0), 0) !== 100
+    ) {
+      setError("Percentages must add up to 100%.");
+      return;
+    }
+    if (mode === "SHARES" && splits.some((split) => (split.shares || 0) <= 0)) {
+      setError("Give every selected person at least one share.");
+      return;
+    }
     setBusy(true);
     try {
       await apiFetch(`/api/v1/groups/${group.id}/expenses`, {
@@ -600,6 +627,16 @@ function SettlementComposer({
       <View style={styles.backdrop}>
         <Card>
           <Text style={s.sheetTitle}>Record settlement</Text>
+          {from && to ? (
+            <View style={s.settlementSummary}>
+              <Text style={s.settlementCopy}>
+                {names[from]} is paying {names[to]}
+              </Text>
+              <Text style={s.settlementAmount}>
+                {money(Math.round(Number(amount || 0) * 100), group.currency)}
+              </Text>
+            </View>
+          ) : null}
           {debts.map((debt, index) => (
             <Pressable
               key={index}
@@ -611,7 +648,7 @@ function SettlementComposer({
               style={s.row}
             >
               <Text style={[s.meta, { flex: 1 }]}>
-                {names[debt.from_user]} → {names[debt.to_user]}
+                {names[debt.from_user]} pays {names[debt.to_user]}
               </Text>
               <Text style={s.amount}>{money(debt.amount, group.currency)}</Text>
             </Pressable>
@@ -732,6 +769,15 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
   metric: { color: colors.teal, fontSize: 17, fontWeight: "800", marginTop: 6 },
+  metricNegative: { color: colors.coral },
+  settlementSummary: {
+    backgroundColor: colors.sage,
+    borderRadius: 12,
+    padding: 13,
+    gap: 4,
+  },
+  settlementCopy: { color: colors.ink, fontSize: 12, fontWeight: "800" },
+  settlementAmount: { color: colors.teal, fontSize: 19, fontWeight: "800" },
   tabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tab: {
     paddingHorizontal: 10,

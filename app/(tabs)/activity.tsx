@@ -4,12 +4,12 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../../src/api";
 import { colors, type } from "../../src/theme";
 type Event = {
@@ -17,6 +17,27 @@ type Event = {
   type: string;
   created_at: string;
   payload?: { description?: string };
+};
+const readableType = (value: string) =>
+  value
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+const eventIcon = (value: string) => {
+  const type = value.toLowerCase();
+  if (type.includes("settle") || type.includes("payment")) return "swap";
+  if (type.includes("expense")) return "wallet";
+  if (type.includes("member") || type.includes("group")) return "team";
+  return "notification";
+};
+const dateLabel = (value: string) => {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, { month: "long", day: "numeric" });
 };
 export default function Activity() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -38,6 +59,14 @@ export default function Activity() {
       void load();
     }, [load]),
   );
+  const groupedEvents = events.reduce<Record<string, Event[]>>(
+    (groups, event) => {
+      const label = dateLabel(event.created_at);
+      groups[label] = [...(groups[label] ?? []), event];
+      return groups;
+    },
+    {},
+  );
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
@@ -57,21 +86,26 @@ export default function Activity() {
         {loading ? (
           <ActivityIndicator style={{ marginTop: 30 }} color={colors.teal} />
         ) : (
-          events.map((e) => (
-            <View style={s.item} key={e.id}>
-              <View style={s.icon}>
-                <AntDesign name="notification" size={17} color={colors.teal} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.name}>
-                  {e.payload?.description ||
-                    e.type.toLowerCase().replaceAll("_", " ")}
-                </Text>
-                <Text style={s.muted}>
-                  {e.type.toLowerCase().replaceAll("_", " ")} ·{" "}
-                  {new Date(e.created_at).toLocaleDateString()}
-                </Text>
-              </View>
+          Object.entries(groupedEvents).map(([day, dayEvents]) => (
+            <View key={day} style={s.dayGroup}>
+              <Text style={s.day}>{day}</Text>
+              {dayEvents.map((e) => (
+                <View style={s.item} key={e.id}>
+                  <View style={s.icon}>
+                    <AntDesign
+                      name={eventIcon(e.type)}
+                      size={17}
+                      color={colors.teal}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.name}>
+                      {e.payload?.description || readableType(e.type)}
+                    </Text>
+                    <Text style={s.detail}>{readableType(e.type)}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           ))
         )}
@@ -79,6 +113,9 @@ export default function Activity() {
           <View style={s.empty}>
             <AntDesign name="profile" size={28} color={colors.teal} />
             <Text style={s.name}>No activity yet</Text>
+            <Text style={s.emptyCopy}>
+              Expenses and settlements will appear here.
+            </Text>
           </View>
         ) : null}
       </ScrollView>
@@ -104,7 +141,6 @@ const s = StyleSheet.create({
     color: colors.muted,
     fontSize: 10,
     marginTop: 5,
-    textTransform: "capitalize",
   },
   item: {
     flexDirection: "row",
@@ -113,6 +149,15 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
+  },
+  dayGroup: { marginTop: 23 },
+  day: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    marginBottom: 2,
   },
   icon: {
     width: 40,
@@ -126,7 +171,11 @@ const s = StyleSheet.create({
     fontWeight: "800",
     fontSize: 12,
     color: colors.ink,
-    textTransform: "capitalize",
+  },
+  detail: {
+    color: colors.muted,
+    fontSize: 10,
+    marginTop: 4,
   },
   error: { color: colors.coral, fontSize: 11, marginTop: 14 },
   empty: {
@@ -137,4 +186,5 @@ const s = StyleSheet.create({
     gap: 12,
     marginTop: 24,
   },
+  emptyCopy: { color: colors.muted, fontSize: 11, textAlign: "center" },
 });

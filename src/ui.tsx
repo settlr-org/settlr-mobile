@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,7 +11,8 @@ import {
   View,
   type TextInputProps,
 } from "react-native";
-import { colors, shadow, type } from "./theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, radius, shadow, space, type } from "./theme";
 
 export function Screen({
   children,
@@ -38,17 +38,21 @@ export function PageTitle({
   title,
   description,
   action,
+  titleNumberOfLines,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   action?: ReactNode;
+  titleNumberOfLines?: number;
 }) {
   return (
     <View style={styles.titleRow}>
       <View style={{ flex: 1 }}>
         <Text style={styles.eyebrow}>{eyebrow || "SETTLR"}</Text>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} numberOfLines={titleNumberOfLines}>
+          {title}
+        </Text>
         {description ? (
           <Text style={styles.description}>{description}</Text>
         ) : null}
@@ -96,7 +100,8 @@ export function Button({
         styles.button,
         secondary && styles.buttonSecondary,
         danger && styles.buttonDanger,
-        (disabled || pressed) && styles.buttonMuted,
+        disabled && styles.buttonMuted,
+        pressed && styles.buttonPressed,
       ]}
     >
       {icon ? <AntDesign name={icon as never} size={16} color={color} /> : null}
@@ -119,6 +124,7 @@ export function Field(props: TextInputProps & { label: string }) {
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         placeholderTextColor={colors.muted}
         style={styles.input}
         {...input}
@@ -227,16 +233,16 @@ export function ConfirmAction({
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
-  scroll: { paddingBottom: 112 },
-  page: { padding: 18, gap: 14 },
+  scroll: { paddingBottom: 120 },
+  page: { padding: space.lg, gap: space.md },
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
+    gap: space.md,
     marginBottom: 4,
   },
   eyebrow: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "800",
     color: colors.teal,
     letterSpacing: 1.8,
@@ -244,33 +250,34 @@ export const styles = StyleSheet.create({
   title: {
     fontFamily: type.title,
     color: colors.ink,
-    fontSize: 32,
-    marginTop: 3,
+    fontSize: 30,
+    lineHeight: 36,
+    marginTop: 2,
   },
   description: {
     color: colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: 4,
   },
   card: {
     backgroundColor: colors.paper,
     borderColor: colors.line,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    gap: 10,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    gap: space.md,
     ...shadow,
   },
   button: {
     minHeight: 44,
-    borderRadius: 12,
+    borderRadius: radius.md,
     backgroundColor: colors.teal,
-    paddingHorizontal: 15,
+    paddingHorizontal: space.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
+    gap: space.sm,
   },
   buttonSecondary: {
     backgroundColor: colors.paper,
@@ -282,27 +289,33 @@ export const styles = StyleSheet.create({
     borderColor: "#e8c4c5",
     borderWidth: 1,
   },
-  buttonMuted: { opacity: 0.55 },
-  buttonText: { color: colors.white, fontSize: 12, fontWeight: "800" },
+  buttonMuted: { opacity: 0.5 },
+  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  buttonText: { color: colors.white, fontSize: 13, fontWeight: "800" },
   buttonSecondaryText: { color: colors.ink },
   buttonDangerText: { color: colors.coral },
   field: { gap: 6 },
-  label: { fontSize: 11, fontWeight: "800", color: colors.ink },
+  label: { fontSize: 12, fontWeight: "800", color: colors.ink },
   input: {
     minHeight: 46,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 13,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
     backgroundColor: colors.cream,
     color: colors.ink,
-    fontSize: 13,
+    fontSize: 15,
   },
   state: { paddingVertical: 48, alignItems: "center", gap: 12 },
   empty: { alignItems: "center", paddingVertical: 30 },
   emptyTitle: { color: colors.ink, fontFamily: type.title, fontSize: 22 },
-  error: { padding: 12, backgroundColor: "#fff0f0", borderRadius: 12, gap: 6 },
-  errorText: { color: colors.coral, fontSize: 12 },
+  error: {
+    padding: 12,
+    backgroundColor: colors.coralSoft,
+    borderRadius: radius.md,
+    gap: 6,
+  },
+  errorText: { color: colors.coral, fontSize: 13 },
   retry: { color: colors.teal, fontWeight: "800", fontSize: 12 },
   backdrop: {
     flex: 1,

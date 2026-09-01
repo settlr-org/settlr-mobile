@@ -5,12 +5,12 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../../src/api";
 import { useSession } from "../../src/session";
 import { colors, shadow, type } from "../../src/theme";
