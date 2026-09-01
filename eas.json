@@ -16,14 +16,14 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.example.com"
+        "EXPO_PUBLIC_API_URL": "https://settlrstagingapi.theswissknife.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.example.com"
+        "EXPO_PUBLIC_API_URL": "https://settlrapi.theswissknife.com"
       }
     }
   },

@@ -2,7 +2,7 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const apiUrl =
-    process.env.EXPO_PUBLIC_API_URL ?? "https://api.example.com";
+    process.env.EXPO_PUBLIC_API_URL ?? "https://settlrapi.theswissknife.com";
   // Android release builds reject HTTP by default. Allow it only for the
   // emulator's local host bridge; staging and production stay HTTPS-only.
 
@@ -16,7 +16,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     userInterfaceStyle: "automatic",
     ios: {
       bundleIdentifier: "com.settlr.app",
-      associatedDomains: ["applinks:example.com"],
+      associatedDomains: ["applinks:settlr.theswissknife.com"],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -30,17 +30,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           data: [
             {
               scheme: "https",
-              host: "example.com",
+              host: "settlr.theswissknife.com",
               pathPrefix: "/verify-email",
             },
             {
               scheme: "https",
-              host: "example.com",
+              host: "settlr.theswissknife.com",
               pathPrefix: "/reset-password",
             },
             {
               scheme: "https",
-              host: "example.com",
+              host: "settlr.theswissknife.com",
               pathPrefix: "/invite",
             },
           ],
