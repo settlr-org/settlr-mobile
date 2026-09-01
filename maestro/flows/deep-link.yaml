@@ -4,7 +4,16 @@ appId: com.settlr.app
 - runFlow: login.yaml
 - launchApp:
     clearState: false
+# `launchApp` restarts Android even with persisted state. Wait for SecureStore
+# restoration and Expo Router hydration before handing it an intent.
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 10000
 - openLink: "settlr://groups"
-- assertVisible: "Your groups"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 10000
 - openLink: "settlr://activity"
-- assertVisible: "Activity"
+- extendedWaitUntil:
+    visible: "Activity"
+    timeout: 10000

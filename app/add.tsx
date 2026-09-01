@@ -21,6 +21,7 @@ type Member = { id: string; name: string };
 export default function Add() {
   const { user } = useSession();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
   const [groupId, setGroupId] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [payer, setPayer] = useState("");
@@ -37,7 +38,8 @@ export default function Add() {
         setGroups(r.data);
         setGroupId(r.data[0]?.id || "");
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(e.message))
+      .finally(() => setGroupsLoading(false));
   }, []);
   useEffect(() => {
     if (groupId)
@@ -154,8 +156,24 @@ export default function Add() {
             Start with the essentials. Everyone selected will split this
             equally.
           </Text>
-          {!groups.length && !error ? (
-            <ActivityIndicator color={colors.teal} />
+          {groupsLoading ? <ActivityIndicator color={colors.teal} /> : null}
+          {!groupsLoading && !groups.length ? (
+            <View style={s.noGroups}>
+              <AntDesign name="team" size={22} color={colors.teal} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.noGroupsTitle}>Create a group first</Text>
+                <Text style={s.help}>
+                  Shared expenses need a group and at least one member.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => router.replace("/(tabs)/groups?new=1")}
+                accessibilityRole="button"
+                accessibilityLabel="Create a group"
+              >
+                <Text style={s.selectAll}>Create</Text>
+              </Pressable>
+            </View>
           ) : null}
           <Text style={s.label}>Group</Text>
           <ScrollView
@@ -514,4 +532,16 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   choiceTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  noGroups: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.sage,
+    borderRadius: 15,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  noGroupsTitle: { color: colors.ink, fontSize: 12, fontWeight: "800" },
 });

@@ -112,8 +112,8 @@ export default function Home() {
         {/* Parity with web AppShell quick-card: Add expense / Settle up / New group */}
         <View style={s.actions}>
           <Quick href="/add" icon="plus" label="Add expense" />
-          <Quick href="/(tabs)/groups" icon="swap" label="Settle up" />
-          <Quick href="/(tabs)/groups" icon="team" label="New group" />
+          <Quick href="/(tabs)/groups" icon="swap" label="View groups" />
+          <Quick href="/(tabs)/groups?new=1" icon="team" label="New group" />
         </View>
         <Header title="Friends" meta={`${friends.length} connected`} />
         {friends.slice(0, 4).map((f) => (
@@ -140,7 +140,7 @@ function Quick({
   icon,
   label,
 }: {
-  href: "/add" | "/(tabs)/groups";
+  href: "/add" | "/(tabs)/groups" | "/(tabs)/groups?new=1";
   icon: string;
   label: string;
 }) {

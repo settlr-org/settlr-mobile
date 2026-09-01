@@ -1,9 +1,11 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -32,6 +34,7 @@ const money = (amount: number, currency: string) =>
     maximumFractionDigits: 2,
   }).format(amount / 100);
 export default function Groups() {
+  const { new: createOnOpen } = useLocalSearchParams<{ new?: string }>();
   const [groups, setGroups] = useState<Group[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -67,6 +70,9 @@ export default function Groups() {
       void load();
     }, [load]),
   );
+  useEffect(() => {
+    if (createOnOpen === "1") setShow(true);
+  }, [createOnOpen]);
   const create = async () => {
     try {
       await apiFetch("/api/v1/groups", {
@@ -179,65 +185,81 @@ export default function Groups() {
           </View>
         ) : null}
       </ScrollView>
-      <Modal visible={show} transparent animationType="fade">
-        <View style={s.backdrop}>
-          <View style={s.modal}>
-            <View style={s.modalHead}>
-              <Text style={s.modalTitle}>New group</Text>
-              <Pressable onPress={() => setShow(false)}>
-                <AntDesign name="close" size={20} color={colors.muted} />
+      <Modal
+        visible={show}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShow(false)}
+      >
+        <KeyboardAvoidingView
+          style={s.backdrop}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <ScrollView
+            contentContainerStyle={s.modalScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={s.modal}>
+              <View style={s.modalHead}>
+                <Text style={s.modalTitle}>New group</Text>
+                <Pressable onPress={() => setShow(false)}>
+                  <AntDesign name="close" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+              <TextInput
+                testID="group-name"
+                value={name}
+                onChangeText={setName}
+                placeholder="Group name"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+              />
+              <TextInput
+                value={currency}
+                onChangeText={setCurrency}
+                placeholder="Currency (e.g. NPR)"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="characters"
+                maxLength={3}
+                style={s.input}
+              />
+              <View style={s.typeRow}>
+                {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setGroupType(item)}
+                    style={[s.typeChip, groupType === item && s.typeChipActive]}
+                  >
+                    <Text
+                      style={[
+                        s.typeText,
+                        groupType === item && s.typeTextActive,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                testID="group-description"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Description (optional)"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+              />
+              <Pressable
+                testID="group-submit"
+                style={s.cta}
+                onPress={create}
+                disabled={!name.trim()}
+              >
+                <Text style={s.ctaText}>Create group</Text>
               </Pressable>
             </View>
-            <TextInput
-              testID="group-name"
-              value={name}
-              onChangeText={setName}
-              placeholder="Group name"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-            />
-            <TextInput
-              value={currency}
-              onChangeText={setCurrency}
-              placeholder="Currency (e.g. NPR)"
-              placeholderTextColor={colors.muted}
-              autoCapitalize="characters"
-              maxLength={3}
-              style={s.input}
-            />
-            <View style={s.typeRow}>
-              {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
-                <Pressable
-                  key={item}
-                  onPress={() => setGroupType(item)}
-                  style={[s.typeChip, groupType === item && s.typeChipActive]}
-                >
-                  <Text
-                    style={[s.typeText, groupType === item && s.typeTextActive]}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              testID="group-description"
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Description (optional)"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-            />
-            <Pressable
-              testID="group-submit"
-              style={s.cta}
-              onPress={create}
-              disabled={!name.trim()}
-            >
-              <Text style={s.ctaText}>Create group</Text>
-            </Pressable>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -335,6 +357,9 @@ const s = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(8,20,16,.6)",
+  },
+  modalScroll: {
+    flexGrow: 1,
     justifyContent: "center",
     padding: 20,
   },
