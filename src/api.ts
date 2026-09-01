@@ -116,6 +116,7 @@ async function clearSession() {
   await Promise.all([
     storage.deleteItemAsync(ACCESS),
     storage.deleteItemAsync(REFRESH),
+    storage.deleteItemAsync("settlr_pending_invite"),
   ]);
 }
 

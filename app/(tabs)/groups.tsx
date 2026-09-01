@@ -17,6 +17,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../../src/api";
 import { colors, shadow, type } from "../../src/theme";
+import { ErrorNotice } from "../../src/ui";
+import { money as fmtMoney } from "../../src/types";
+
 type Group = {
   id: string;
   name: string;
@@ -27,23 +30,23 @@ type Group = {
 type OverviewBalance = {
   data: { group_id: string; balance: number; currency: string }[];
 };
-const money = (amount: number, currency: string) =>
-  new Intl.NumberFormat("en-NP", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(amount / 100);
+const money = (amount: number, currency: string) => fmtMoney(amount, currency);
+
 export default function Groups() {
   const { new: createOnOpen } = useLocalSearchParams<{ new?: string }>();
   const [groups, setGroups] = useState<Group[]>([]);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [currency, setCurrency] = useState("NPR");
   const [groupType, setGroupType] = useState("OTHER");
   const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [modalError, setModalError] = useState("");
+
   const load = useCallback(async () => {
     try {
       const [groupResponse, balanceResponse] = await Promise.all([
@@ -59,12 +62,15 @@ export default function Groups() {
           ]),
         ),
       );
+      setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load groups.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -73,14 +79,32 @@ export default function Groups() {
   useEffect(() => {
     if (createOnOpen === "1") setShow(true);
   }, [createOnOpen]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    void load();
+  }, [load]);
+
   const create = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setModalError("Group name is required.");
+      return;
+    }
+    if (currency.trim().length !== 3) {
+      setModalError("Use a 3-letter currency like NPR or USD.");
+      return;
+    }
+    if (creating) return;
+    setCreating(true);
+    setModalError("");
     try {
       await apiFetch("/api/v1/groups", {
         method: "POST",
         body: JSON.stringify({
-          name,
-          description,
-          currency: currency.toUpperCase(),
+          name: trimmed,
+          description: description.trim(),
+          currency: currency.toUpperCase().trim(),
           group_type: groupType,
         }),
       });
@@ -91,172 +115,309 @@ export default function Groups() {
       setGroupType("OTHER");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create group.");
+      setModalError(e instanceof Error ? e.message : "Could not create group.");
+    } finally {
+      setCreating(false);
     }
   };
+
+  const isCreateDisabled =
+    !name.trim() || currency.trim().length !== 3 || creating;
+
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={load}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             tintColor={colors.teal}
           />
         }
         contentContainerStyle={s.page}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={s.header}>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={s.eyebrow}>SHARED LEDGERS</Text>
             <Text style={s.title}>Your groups</Text>
-            <Text style={s.muted}>{groups.length} active</Text>
+            <Text style={s.subtle}>
+              {groups.length} {groups.length === 1 ? "ledger" : "ledgers"} ·
+              Balances explain who owes whom
+            </Text>
           </View>
           <Pressable
             testID="groups-create"
-            style={s.createGroup}
-            onPress={() => setShow(true)}
+            style={({ pressed }) => [
+              s.createGroup,
+              pressed && { opacity: 0.92 },
+            ]}
+            onPress={() => {
+              setModalError("");
+              setShow(true);
+            }}
+            accessibilityRole="button"
             accessibilityLabel="Create group"
+            hitSlop={6}
           >
-            <AntDesign name="plus" size={14} color={colors.teal} />
+            <AntDesign name="plus" size={14} color={colors.white} />
             <Text style={s.createGroupText}>New group</Text>
           </Pressable>
         </View>
-        {error ? <Text style={s.error}>{error}</Text> : null}
+
+        {error ? (
+          <ErrorNotice message={error} retry={() => void load()} />
+        ) : null}
+
         {loading ? (
-          <ActivityIndicator color={colors.teal} />
+          <View style={s.loadingWrap}>
+            <ActivityIndicator color={colors.teal} />
+            <Text style={s.muted}>Loading groups…</Text>
+          </View>
         ) : (
           groups.map((g, i) => {
             const balance = balances[g.id] || 0;
+            const isPositive = balance > 0;
+            const isNegative = balance < 0;
+            const label = isPositive
+              ? "YOU ARE OWED"
+              : isNegative
+                ? "YOU OWE"
+                : "SETTLED";
+            const isAlt = i % 2 === 1;
             return (
               <Pressable
-                style={s.card}
                 key={g.id}
+                style={({ pressed }) => [s.card, pressed && s.cardPressed]}
                 onPress={() => router.push(`/groups/${g.id}`)}
+                accessibilityRole="button"
+                accessibilityLabel={`${g.name}, ${label} ${money(Math.abs(balance), g.currency)}`}
               >
-                <View
-                  style={[
-                    s.icon,
-                    i % 2 === 1 && { backgroundColor: "#f8ead4" },
-                  ]}
-                >
+                <View style={[s.icon, isAlt && s.iconAlt]}>
                   <AntDesign
-                    name={g.group_type === "TRIP" ? "environment" : "appstore"}
-                    size={21}
-                    color={i % 2 === 1 ? colors.gold : colors.teal}
+                    name={g.group_type === "TRIP" ? "environment" : "team"}
+                    size={20}
+                    color={isAlt ? colors.gold : colors.teal}
                   />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.kind}>
-                    {g.group_type || "GROUP"} · {g.currency}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.kind} numberOfLines={1}>
+                    {(g.group_type || "GROUP").toUpperCase()} · {g.currency}
                   </Text>
-                  <Text style={s.name} numberOfLines={1}>
+                  <Text style={s.name} numberOfLines={1} ellipsizeMode="tail">
                     {g.name}
                   </Text>
-                  <Text style={s.muted} numberOfLines={1}>
-                    {g.description || "A shared Settlr ledger"}
+                  <Text style={s.desc} numberOfLines={2} ellipsizeMode="tail">
+                    {g.description ||
+                      "Shared expenses, balances, and repayments."}
                   </Text>
                 </View>
                 <View style={s.balance}>
-                  <Text style={s.balanceLabel}>
-                    {balance > 0
-                      ? "YOU GET"
-                      : balance < 0
-                        ? "YOU OWE"
-                        : "SETTLED"}
+                  <Text
+                    style={[
+                      s.balanceLabel,
+                      isNegative && s.balanceLabelNegative,
+                    ]}
+                  >
+                    {label}
                   </Text>
                   <Text
-                    style={[s.balanceAmount, balance < 0 && s.balanceNegative]}
+                    style={[
+                      s.balanceAmount,
+                      isNegative && s.balanceNegative,
+                      isPositive && s.balancePositive,
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
                   >
-                    {money(Math.abs(balance), g.currency)}
+                    {isNegative || isPositive
+                      ? money(Math.abs(balance), g.currency)
+                      : "—"}
+                  </Text>
+                  <Text style={s.balanceHelp} numberOfLines={1}>
+                    {isPositive
+                      ? "Others owe you"
+                      : isNegative
+                        ? "You owe others"
+                        : "No balance"}
                   </Text>
                 </View>
               </Pressable>
             );
           })
         )}
+
         {!loading && !groups.length ? (
           <View style={s.empty}>
-            <AntDesign name="team" color={colors.teal} size={30} />
+            <View style={s.emptyIcon}>
+              <AntDesign name="team" color={colors.teal} size={24} />
+            </View>
             <Text style={s.emptyTitle}>Create your first group</Text>
-            <Text style={s.muted}>
-              Start a ledger for a home, trip, or any shared expense.
+            <Text style={s.emptyText}>
+              Start a ledger for a home, trip, or any shared expense. Then add
+              members and record your first expense.
             </Text>
+            <Pressable
+              style={s.emptyCta}
+              onPress={() => setShow(true)}
+              accessibilityRole="button"
+            >
+              <Text style={s.emptyCtaText}>New group</Text>
+            </Pressable>
           </View>
         ) : null}
       </ScrollView>
+
       <Modal
         visible={show}
         transparent
         animationType="fade"
-        onRequestClose={() => setShow(false)}
+        onRequestClose={() => !creating && setShow(false)}
+        statusBarTranslucent
       >
         <KeyboardAvoidingView
           style={s.backdrop}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
+          <Pressable
+            style={s.backdropPress}
+            onPress={() => !creating && setShow(false)}
+          />
           <ScrollView
             contentContainerStyle={s.modalScroll}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             <View style={s.modal}>
               <View style={s.modalHead}>
-                <Text style={s.modalTitle}>New group</Text>
-                <Pressable onPress={() => setShow(false)}>
-                  <AntDesign name="close" size={20} color={colors.muted} />
+                <View>
+                  <Text style={s.eyebrow}>NEW LEDGER</Text>
+                  <Text style={s.modalTitle}>New group</Text>
+                </View>
+                <Pressable
+                  onPress={() => !creating && setShow(false)}
+                  hitSlop={12}
+                  style={s.closeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                >
+                  <AntDesign name="close" size={18} color={colors.ink} />
                 </Pressable>
               </View>
-              <TextInput
-                testID="group-name"
-                value={name}
-                onChangeText={setName}
-                placeholder="Group name"
-                placeholderTextColor={colors.muted}
-                style={s.input}
-              />
-              <TextInput
-                value={currency}
-                onChangeText={setCurrency}
-                placeholder="Currency (e.g. NPR)"
-                placeholderTextColor={colors.muted}
-                autoCapitalize="characters"
-                maxLength={3}
-                style={s.input}
-              />
-              <View style={s.typeRow}>
-                {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => (
-                  <Pressable
-                    key={item}
-                    onPress={() => setGroupType(item)}
-                    style={[s.typeChip, groupType === item && s.typeChipActive]}
-                  >
-                    <Text
-                      style={[
-                        s.typeText,
-                        groupType === item && s.typeTextActive,
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </Pressable>
-                ))}
+
+              <View style={s.field}>
+                <Text style={s.label}>Group name *</Text>
+                <TextInput
+                  testID="group-name"
+                  value={name}
+                  onChangeText={(v) => {
+                    setName(v);
+                    if (modalError) setModalError("");
+                  }}
+                  placeholder="Weekend trip, Flat 3B…"
+                  placeholderTextColor={colors.muted}
+                  style={[
+                    s.input,
+                    !name.trim() && name.length > 0 ? s.inputError : null,
+                  ]}
+                  returnKeyType="next"
+                  accessibilityLabel="Group name"
+                />
               </View>
-              <TextInput
-                testID="group-description"
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Description (optional)"
-                placeholderTextColor={colors.muted}
-                style={s.input}
-              />
+
+              <View style={s.field}>
+                <Text style={s.label}>Currency</Text>
+                <TextInput
+                  value={currency}
+                  onChangeText={(v) => {
+                    setCurrency(v.toUpperCase().slice(0, 3));
+                    if (modalError) setModalError("");
+                  }}
+                  placeholder="NPR"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={3}
+                  style={[
+                    s.input,
+                    currency.length !== 3 && currency.length > 0
+                      ? s.inputError
+                      : null,
+                  ]}
+                  accessibilityLabel="Currency"
+                />
+                <Text style={s.help}>
+                  3-letter code. Example: NPR, USD, EUR.
+                </Text>
+              </View>
+
+              <Text style={s.label}>Group type</Text>
+              <View style={s.typeRow}>
+                {["HOME", "TRIP", "COUPLE", "EVENT", "OTHER"].map((item) => {
+                  const active = groupType === item;
+                  return (
+                    <Pressable
+                      key={item}
+                      onPress={() => setGroupType(item)}
+                      style={[s.typeChip, active && s.typeChipActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={item}
+                    >
+                      <Text style={[s.typeText, active && s.typeTextActive]}>
+                        {item}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.label}>Description (optional)</Text>
+                <TextInput
+                  testID="group-description"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="What is this ledger for?"
+                  placeholderTextColor={colors.muted}
+                  style={[s.input, s.inputMultiline]}
+                  multiline
+                  numberOfLines={3}
+                  accessibilityLabel="Description"
+                />
+              </View>
+
+              {modalError ? <ErrorNotice message={modalError} /> : null}
+
               <Pressable
                 testID="group-submit"
-                style={s.cta}
+                style={({ pressed }) => [
+                  s.cta,
+                  isCreateDisabled && s.ctaDisabled,
+                  pressed && !isCreateDisabled && s.ctaPressed,
+                ]}
                 onPress={create}
-                disabled={!name.trim()}
+                disabled={isCreateDisabled}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isCreateDisabled }}
               >
-                <Text style={s.ctaText}>Create group</Text>
+                <Text
+                  style={[s.ctaText, isCreateDisabled && s.ctaTextDisabled]}
+                >
+                  {creating ? "Creating…" : "Create group"}
+                </Text>
+                {!creating ? (
+                  <AntDesign
+                    name="arrow-right"
+                    size={14}
+                    color={isCreateDisabled ? colors.muted : colors.white}
+                  />
+                ) : null}
               </Pressable>
+              <Text style={s.modalFoot}>
+                You can add members after creating.
+              </Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -264,139 +425,255 @@ export default function Groups() {
     </SafeAreaView>
   );
 }
+
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
-  page: { padding: 18, paddingBottom: 110 },
+  page: { padding: 16, paddingBottom: 110, gap: 12 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 4,
   },
   eyebrow: {
-    fontSize: 9,
-    letterSpacing: 2,
+    fontSize: 10,
+    letterSpacing: 1.6,
     color: colors.teal,
     fontWeight: "800",
+    textTransform: "uppercase",
   },
   title: {
     fontFamily: type.title,
-    fontSize: 32,
+    fontSize: 26,
     color: colors.ink,
-    marginTop: 3,
+    marginTop: 4,
+    lineHeight: 30,
   },
-  muted: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  subtle: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 6 },
+  muted: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  loadingWrap: { paddingVertical: 32, alignItems: "center", gap: 10 },
   createGroup: {
-    height: 38,
+    height: 40,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.teal,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.teal,
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 11,
+    paddingHorizontal: 14,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 4,
   },
-  createGroupText: { color: colors.teal, fontSize: 10, fontWeight: "800" },
+  createGroupText: { color: colors.white, fontSize: 12, fontWeight: "800" },
   card: {
     backgroundColor: colors.paper,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 15,
-    marginBottom: 10,
+    padding: 14,
     flexDirection: "row",
-    gap: 13,
+    gap: 12,
     alignItems: "center",
+    minHeight: 88,
     ...shadow,
   },
-  balance: { alignItems: "flex-end", minWidth: 68 },
-  balanceLabel: {
-    color: colors.muted,
-    fontSize: 8,
-    fontWeight: "800",
-    letterSpacing: 0.7,
-  },
-  balanceAmount: {
-    color: colors.teal,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 3,
-  },
-  balanceNegative: { color: colors.coral },
+  cardPressed: { opacity: 0.96, transform: [{ scale: 0.99 }] },
   icon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 13,
+    backgroundColor: colors.sage,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  iconAlt: { backgroundColor: colors.altGoldBg },
+  kind: {
+    fontSize: 10,
+    letterSpacing: 1,
+    color: colors.teal,
+    fontWeight: "800",
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.ink,
+    marginTop: 3,
+    lineHeight: 18,
+  },
+  desc: { fontSize: 11, color: colors.muted, marginTop: 2, lineHeight: 15 },
+  balance: {
+    alignItems: "flex-end",
+    minWidth: 84,
+    maxWidth: 110,
+    flexShrink: 0,
+    gap: 2,
+  },
+  balanceLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  balanceLabelNegative: { color: colors.coral },
+  balanceAmount: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 1,
+  },
+  balancePositive: { color: colors.teal },
+  balanceNegative: { color: colors.coral },
+  balanceHelp: { color: colors.muted, fontSize: 10, lineHeight: 12 },
+  empty: {
+    backgroundColor: colors.paper,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
+    marginTop: 8,
+  },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: colors.sage,
     alignItems: "center",
     justifyContent: "center",
   },
-  kind: {
-    fontSize: 8,
-    letterSpacing: 1.3,
-    color: colors.teal,
-    fontWeight: "800",
-  },
-  name: { fontSize: 14, fontWeight: "800", color: colors.ink, marginTop: 3 },
-  error: { color: colors.coral, fontSize: 11, marginBottom: 12 },
-  empty: {
-    backgroundColor: colors.paper,
-    borderRadius: 20,
-    padding: 35,
-    alignItems: "center",
-    gap: 7,
-  },
   emptyTitle: {
     fontFamily: type.title,
-    fontSize: 22,
+    fontSize: 20,
     color: colors.ink,
-    marginTop: 7,
+    marginTop: 6,
+    textAlign: "center",
   },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
+    paddingHorizontal: 12,
+  },
+  emptyCta: {
+    marginTop: 6,
+    backgroundColor: colors.teal,
+    paddingHorizontal: 18,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyCtaText: { color: colors.white, fontWeight: "800", fontSize: 12 },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(8,20,16,.6)",
+    backgroundColor: colors.backdrop,
+    justifyContent: "center",
   },
+  backdropPress: { ...StyleSheet.absoluteFill },
   modalScroll: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 20,
+    padding: 16,
   },
-  modal: { backgroundColor: colors.paper, borderRadius: 24, padding: 22 },
-  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  modal: {
+    backgroundColor: colors.paper,
+    borderRadius: 22,
+    padding: 18,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  modalHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 2,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.sage,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontFamily: type.title,
+    fontSize: 22,
+    color: colors.ink,
+    marginTop: 2,
+    lineHeight: 26,
+  },
+  field: { gap: 6 },
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.ink,
+    letterSpacing: 0.2,
+  },
+  help: { fontSize: 10, color: colors.muted, lineHeight: 13, marginTop: 2 },
+  input: {
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.ink,
+    fontSize: 14,
+    minHeight: 44,
+  },
+  inputMultiline: { minHeight: 72, textAlignVertical: "top", paddingTop: 12 },
+  inputError: { borderColor: colors.coral },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   typeChip: {
     borderColor: colors.line,
     borderWidth: 1,
     borderRadius: 12,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: colors.paper,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   typeChipActive: { backgroundColor: colors.teal, borderColor: colors.teal },
-  typeText: { color: colors.ink, fontSize: 9, fontWeight: "800" },
+  typeText: { color: colors.ink, fontSize: 11, fontWeight: "700" },
   typeTextActive: { color: colors.white },
-  modalHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  modalTitle: { fontFamily: type.title, fontSize: 26, color: colors.ink },
-  input: {
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 13,
-    padding: 15,
-    color: colors.ink,
-    marginBottom: 11,
-  },
   cta: {
     backgroundColor: colors.teal,
-    borderRadius: 13,
-    padding: 16,
+    borderRadius: 12,
+    height: 46,
     alignItems: "center",
-    marginTop: 3,
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
   },
-  ctaText: { color: colors.white, fontWeight: "800" },
+  ctaDisabled: {
+    backgroundColor: colors.sage,
+    borderColor: colors.line,
+    borderWidth: 1,
+    opacity: 0.9,
+  },
+  ctaPressed: { opacity: 0.88 },
+  ctaText: { color: colors.white, fontWeight: "800", fontSize: 13 },
+  ctaTextDisabled: { color: colors.muted },
+  modalFoot: {
+    fontSize: 10,
+    color: colors.muted,
+    textAlign: "center",
+    lineHeight: 13,
+  },
 });
