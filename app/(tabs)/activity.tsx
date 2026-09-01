@@ -25,7 +25,7 @@ export default function Activity() {
   const load = useCallback(async () => {
     try {
       setEvents(
-        (await apiFetch<{ data: Event[] }>("/api/v1/activity?limit=50")).data,
+        (await apiFetch<{ data: Event[] }>("/api/v1/activity?limit=100")).data,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load activity.");

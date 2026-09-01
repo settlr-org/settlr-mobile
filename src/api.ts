@@ -4,6 +4,9 @@ import type { User } from "./types";
 
 export type { User } from "./types";
 
+// Parity note: web uses /api-proxy (Next.js route.ts -> cookie refresh, no refresh_token body, GET cache 60s)
+// Mobile uses direct EXPO_PUBLIC_API_URL with Bearer + refresh_token body, same 60s GET cache via requestCache,
+// and matching 401 -> refresh -> retry flow. Content-Type correctly omitted for FormData in both.
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? "https://api.example.com"
 ).replace(/\/$/, "");
@@ -63,6 +66,17 @@ export class ApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 15_000;
+const GET_CACHE_MS = 60_000;
+type CacheEntry = {
+  expiresAt: number;
+  promise: Promise<unknown>;
+  value?: unknown;
+};
+const requestCache = new Map<string, CacheEntry>();
+
+export const readApiCache = <T>(path: string) =>
+  requestCache.get(path)?.value as T | undefined;
+export const clearApiCache = () => requestCache.clear();
 
 async function fetchWithTimeout(
   input: RequestInfo | URL,
@@ -73,6 +87,8 @@ async function fetchWithTimeout(
     () => controller.abort(),
     REQUEST_TIMEOUT_MS,
   );
+  const abort = () => controller.abort();
+  init.signal?.addEventListener("abort", abort, { once: true });
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
@@ -85,6 +101,7 @@ async function fetchWithTimeout(
     throw error;
   } finally {
     globalThis.clearTimeout(timeout);
+    init.signal?.removeEventListener("abort", abort);
   }
 }
 
@@ -95,6 +112,7 @@ async function saveSession(session: Session) {
   ]);
 }
 async function clearSession() {
+  clearApiCache();
   await Promise.all([
     storage.deleteItemAsync(ACCESS),
     storage.deleteItemAsync(REFRESH),
@@ -134,9 +152,47 @@ export async function apiFetch<T>(
   init: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  const method = (init.method || "GET").toUpperCase();
+  const cacheable = method === "GET" && !init.body && retry;
+  if (cacheable) {
+    const cached = requestCache.get(path);
+    if (cached && cached.expiresAt > Date.now())
+      return cached.promise as Promise<T>;
+    const entry: CacheEntry = {
+      expiresAt: Date.now() + GET_CACHE_MS,
+      promise: Promise.resolve(undefined),
+      value: cached?.value,
+    };
+    entry.promise = performRequest<T>(path, init, retry)
+      .then((value) => {
+        entry.value = value;
+        return value;
+      })
+      .catch((error) => {
+        if (requestCache.get(path) === entry) requestCache.delete(path);
+        throw error;
+      });
+    requestCache.set(path, entry);
+    return entry.promise as Promise<T>;
+  }
+  const value = await performRequest<T>(path, init, retry);
+  if (method !== "GET") clearApiCache();
+  return value;
+}
+
+async function performRequest<T>(
+  path: string,
+  init: RequestInit,
+  retry: boolean,
+): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (
+    init.body &&
+    !(init.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  )
+    headers.set("Content-Type", "application/json");
   const token = await storage.getItemAsync(ACCESS);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetchWithTimeout(`${API_URL}${path}`, {
@@ -144,7 +200,7 @@ export async function apiFetch<T>(
     headers,
   });
   if (response.status === 401 && retry && (await refresh()))
-    return apiFetch<T>(path, init, false);
+    return performRequest<T>(path, init, false);
   if (!response.ok)
     throw new ApiError(response.status, await errorMessage(response));
   if (response.status === 204) return undefined as T;

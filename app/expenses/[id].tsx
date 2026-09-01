@@ -133,6 +133,7 @@ export default function ExpenseDetail() {
         <Editor
           expense={expense}
           categories={categories}
+          members={members}
           onClose={() => setEditing(false)}
           onSaved={load}
         />
@@ -143,34 +144,63 @@ export default function ExpenseDetail() {
 function Editor({
   expense,
   categories,
+  members,
   onClose,
   onSaved,
 }: {
   expense: Expense;
   categories: Category[];
+  members: Member[];
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const [description, setDescription] = useState(expense.description);
   const [amount, setAmount] = useState(String(expense.amount / 100));
+  const [paidBy, setPaidBy] = useState(expense.paid_by);
   const [date, setDate] = useState(expense.expense_date);
   const [notes, setNotes] = useState(expense.notes || "");
   const [category, setCategory] = useState(expense.category_id || "");
+  const [splitValues, setSplitValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const split of expense.splits || []) {
+      if (expense.split_mode === "EXACT" && split.amount !== undefined)
+        init[split.user_id] = String(split.amount / 100);
+      else if (
+        expense.split_mode === "PERCENTAGE" &&
+        split.percentage !== undefined
+      )
+        init[split.user_id] = String(split.percentage);
+      else if (expense.split_mode === "SHARES" && split.shares !== undefined)
+        init[split.user_id] = String(split.shares);
+    }
+    return init;
+  });
   const [error, setError] = useState("");
   const save = async () => {
     try {
+      const splits = (expense.splits || []).map((split) => {
+        const base = { user_id: split.user_id };
+        const value = Number(splitValues[split.user_id]);
+        if (expense.split_mode === "EXACT" && !Number.isNaN(value))
+          return { ...base, amount: Math.round(value * 100) };
+        if (expense.split_mode === "PERCENTAGE" && !Number.isNaN(value))
+          return { ...base, percentage: value };
+        if (expense.split_mode === "SHARES" && !Number.isNaN(value))
+          return { ...base, shares: value };
+        return base;
+      });
       await apiFetch(`/api/v1/expenses/${expense.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           description,
           amount: Math.round(Number(amount) * 100),
           currency: expense.currency,
-          paid_by: expense.paid_by,
+          paid_by: paidBy,
           expense_date: date,
           notes,
           category_id: category || null,
           split_mode: expense.split_mode,
-          splits: expense.splits,
+          splits,
         }),
       });
       await onSaved();
@@ -186,6 +216,9 @@ function Editor({
       <View style={styles.backdrop}>
         <Card>
           <Text style={s.dialog}>Edit expense</Text>
+          <Text style={[s.meta, { marginBottom: 8 }]}>
+            {expense.split_mode} split · {expense.currency}
+          </Text>
           <Field
             label="Description"
             value={description}
@@ -197,7 +230,60 @@ function Editor({
             onChangeText={setAmount}
             keyboardType="decimal-pad"
           />
+          <Text style={[s.item, { marginTop: 8 }]}>Paid by</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 6,
+              marginTop: 6,
+            }}
+          >
+            {members.map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => setPaidBy(m.id)}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 7,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  backgroundColor: paidBy === m.id ? colors.teal : colors.paper,
+                }}
+              >
+                <Text
+                  style={{
+                    color: paidBy === m.id ? colors.white : colors.ink,
+                    fontSize: 11,
+                    fontWeight: "700",
+                  }}
+                >
+                  {m.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <Field label="Date" value={date} onChangeText={setDate} />
+          {expense.split_mode !== "EQUAL" &&
+            (expense.splits || []).map((split) => (
+              <Field
+                key={split.user_id}
+                label={`${expense.split_mode.toLowerCase()} for ${members.find((m) => m.id === split.user_id)?.name || split.user_id}`}
+                value={splitValues[split.user_id] || ""}
+                onChangeText={(value) =>
+                  setSplitValues({ ...splitValues, [split.user_id]: value })
+                }
+                keyboardType="decimal-pad"
+                placeholder={
+                  expense.split_mode === "EXACT"
+                    ? expense.currency
+                    : expense.split_mode === "PERCENTAGE"
+                      ? "%"
+                      : "shares"
+                }
+              />
+            ))}
           <Field
             label="Notes"
             value={notes}

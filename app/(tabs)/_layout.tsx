@@ -1,11 +1,37 @@
-import { Tabs, router } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
-import { Pressable, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { apiFetch } from "../../src/api";
+import { useSession } from "../../src/session";
 import { colors } from "../../src/theme";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { user } = useSession();
+  const pathname = usePathname();
+  const [unread, setUnread] = useState(0);
+  const fetchUnread = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await apiFetch<{ unread_count: number }>(
+        "/api/v1/notifications?limit=1",
+      );
+      setUnread(data.unread_count ?? 0);
+    } catch {}
+  }, [user]);
+  useEffect(() => {
+    void fetchUnread();
+    const id = setInterval(fetchUnread, 30000);
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void fetchUnread();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [fetchUnread, pathname]);
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -58,10 +84,38 @@ export default function TabsLayout() {
           options={{
             title: "More",
             tabBarIcon: ({ color }) => (
-              <AntDesign name="appstore" color={color} size={22} />
+              <View style={{ position: "relative" }}>
+                <AntDesign name="appstore" color={color} size={22} />
+                {unread > 0 ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -2,
+                      right: -6,
+                      width: 9,
+                      height: 9,
+                      borderRadius: 5,
+                      backgroundColor: "#ff3b30",
+                      borderWidth: 2,
+                      borderColor: colors.paper,
+                    }}
+                  />
+                ) : null}
+              </View>
             ),
+            tabBarBadge: unread > 0 ? "" : undefined,
+            tabBarBadgeStyle: {
+              backgroundColor: "#ff3b30",
+              minWidth: 9,
+              minHeight: 9,
+              maxWidth: 9,
+              maxHeight: 9,
+              borderRadius: 5,
+              marginLeft: -6,
+            },
           }}
         />
+        {/* Friends / Activity are first-class on web; on mobile they are accessible via the More hub and direct links, keeping the 4-tab bar uncluttered (see app/(tabs)/more.tsx) */}
         <Tabs.Screen
           name="friends"
           options={{
