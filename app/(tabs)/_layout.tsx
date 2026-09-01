@@ -95,7 +95,7 @@ export default function TabsLayout() {
                       width: 9,
                       height: 9,
                       borderRadius: 5,
-                      backgroundColor: "#ff3b30",
+                      backgroundColor: colors.badge,
                       borderWidth: 2,
                       borderColor: colors.paper,
                     }}
@@ -105,7 +105,7 @@ export default function TabsLayout() {
             ),
             tabBarBadge: unread > 0 ? "" : undefined,
             tabBarBadgeStyle: {
-              backgroundColor: "#ff3b30",
+              backgroundColor: colors.badge,
               minWidth: 9,
               minHeight: 9,
               maxWidth: 9,
@@ -137,10 +137,13 @@ export default function TabsLayout() {
       </Tabs>
       <Pressable
         onPress={() => router.push("/add")}
+        accessibilityRole="button"
         accessibilityLabel="Add expense"
-        style={{
+        accessibilityHint="Create a new shared or personal expense"
+        hitSlop={8}
+        style={({ pressed }) => ({
           position: "absolute",
-          bottom: 88 + insets.bottom,
+          bottom: 86 + insets.bottom,
           right: 16,
           width: 56,
           height: 56,
@@ -149,13 +152,14 @@ export default function TabsLayout() {
           alignItems: "center",
           justifyContent: "center",
           shadowColor: colors.ink,
-          shadowOpacity: 0.15,
+          shadowOpacity: pressed ? 0.12 : 0.15,
           shadowRadius: 12,
           shadowOffset: { width: 0, height: 4 },
           elevation: 4,
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.12)",
-        }}
+          opacity: pressed ? 0.96 : 1,
+        })}
       >
         <AntDesign name="plus" size={22} color={colors.white} />
       </Pressable>
