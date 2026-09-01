@@ -22,31 +22,22 @@ type Balance = {
   data: unknown[];
 };
 type Friend = { user_id: string; name: string };
-type Event = {
-  id: string;
-  type: string;
-  created_at: string;
-  payload?: { description?: string };
-};
 const fmt = (n: number, c = "NPR") => money(n, c);
 export default function Home() {
   const { user } = useSession();
   const [balance, setBalance] = useState<Balance>();
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
     try {
-      const [b, f, a] = await Promise.all([
+      const [b, f] = await Promise.all([
         apiFetch<Balance>("/api/v1/me/balances"),
         apiFetch<{ data: Friend[] }>("/api/v1/friends"),
-        apiFetch<{ data: Event[] }>("/api/v1/activity?limit=6"),
       ]);
       setBalance(b);
       setFriends(f.data);
-      setEvents(a.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load overview.");
     } finally {
@@ -139,26 +130,6 @@ export default function Home() {
         ))}
         {!friends.length ? (
           <Empty icon="team" text="Accepted friends will appear here." />
-        ) : null}
-        <Header title="Latest activity" meta={`${events.length} updates`} />
-        {events.map((e) => (
-          <View style={s.card} key={e.id}>
-            <View style={s.eventIcon}>
-              <AntDesign name="notification" size={17} color={colors.teal} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.cardTitle}>
-                {e.payload?.description ||
-                  e.type.toLowerCase().replaceAll("_", " ")}
-              </Text>
-              <Text style={s.muted}>
-                {new Date(e.created_at).toLocaleDateString()}
-              </Text>
-            </View>
-          </View>
-        ))}
-        {!events.length ? (
-          <Empty icon="profile" text="Your group updates will appear here." />
         ) : null}
       </ScrollView>
     </SafeAreaView>
@@ -317,14 +288,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   friendText: { fontSize: 10, fontWeight: "800", color: colors.teal },
-  eventIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    backgroundColor: colors.sage,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   empty: {
     backgroundColor: colors.paper,
     borderRadius: 16,
