@@ -14,7 +14,7 @@ import {
 import { apiFetch } from "../../src/api";
 import { useSession } from "../../src/session";
 import { colors, shadow, type } from "../../src/theme";
-import { initials } from "../../src/utils/initials";
+import { initials, money } from "../../src/types";
 
 type Balance = {
   summary: { you_are_owed: number; you_owe: number; net_balance: number };
@@ -28,12 +28,7 @@ type Event = {
   created_at: string;
   payload?: { description?: string };
 };
-const fmt = (n: number, c = "NPR") =>
-  new Intl.NumberFormat("en-NP", {
-    style: "currency",
-    currency: c,
-    maximumFractionDigits: 2,
-  }).format(n / 100);
+const fmt = (n: number, c = "NPR") => money(n, c);
 export default function Home() {
   const { user } = useSession();
   const [balance, setBalance] = useState<Balance>();
@@ -47,7 +42,7 @@ export default function Home() {
       const [b, f, a] = await Promise.all([
         apiFetch<Balance>("/api/v1/me/balances"),
         apiFetch<{ data: Friend[] }>("/api/v1/friends"),
-        apiFetch<{ data: Event[] }>("/api/v1/activity?limit=5"),
+        apiFetch<{ data: Event[] }>("/api/v1/activity?limit=6"),
       ]);
       setBalance(b);
       setFriends(f.data);
@@ -123,10 +118,11 @@ export default function Home() {
             </View>
           </View>
         </View>
+        {/* Parity with web AppShell quick-card: Add expense / Settle up / New group */}
         <View style={s.actions}>
           <Quick href="/add" icon="plus" label="Add expense" />
-          <Quick href="/(tabs)/groups" icon="team" label="Groups" />
-          <Quick href="/(tabs)/activity" icon="profile" label="Activity" />
+          <Quick href="/(tabs)/groups" icon="swap" label="Settle up" />
+          <Quick href="/(tabs)/groups" icon="team" label="New group" />
         </View>
         <Header title="Friends" meta={`${friends.length} connected`} />
         {friends.slice(0, 4).map((f) => (
@@ -173,7 +169,7 @@ function Quick({
   icon,
   label,
 }: {
-  href: "/add" | "/(tabs)/groups" | "/(tabs)/activity";
+  href: "/add" | "/(tabs)/groups";
   icon: string;
   label: string;
 }) {

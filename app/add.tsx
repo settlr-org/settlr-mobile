@@ -16,6 +16,7 @@ import {
 import { apiFetch } from "../src/api";
 import { useSession } from "../src/session";
 import { colors, type } from "../src/theme";
+import { labelize } from "../src/types";
 type Group = { id: string; name: string; currency: string };
 type Member = { id: string; name: string };
 export default function Add() {
@@ -25,6 +26,13 @@ export default function Add() {
   const [members, setMembers] = useState<Member[]>([]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [paidBy, setPaidBy] = useState(user?.id || "");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [mode, setMode] = useState<"EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES">(
+    "EQUAL",
+  );
+  const [selected, setSelected] = useState<string[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<"choose" | "shared">("choose");
@@ -39,19 +47,60 @@ export default function Add() {
   useEffect(() => {
     if (groupId)
       apiFetch<{ data: Member[] }>(`/api/v1/groups/${groupId}/members`)
-        .then((r) => setMembers(r.data))
+        .then((r) => {
+          setMembers(r.data);
+          setSelected(r.data.map((m) => m.id));
+          if (r.data.length && !r.data.some((m) => m.id === paidBy)) {
+            setPaidBy(r.data[0].id);
+          } else if (!paidBy && user?.id) {
+            setPaidBy(user.id);
+          }
+        })
         .catch((e) => setError(e.message));
   }, [groupId]);
+  useEffect(() => {
+    if (user?.id && !paidBy) setPaidBy(user.id);
+  }, [user?.id, paidBy]);
   const save = async () => {
     const cents = Math.round(Number(amount) * 100);
     if (!description.trim() || !Number.isFinite(cents) || cents <= 0) {
       setError("Enter a description and an amount greater than zero.");
       return;
     }
+    if (!selected.length) {
+      setError("Select at least one participant.");
+      return;
+    }
+    if (mode !== "EQUAL") {
+      for (const uid of selected) {
+        const v = values[uid];
+        if (
+          v === undefined ||
+          v === "" ||
+          Number.isNaN(Number(v)) ||
+          Number(v) <= 0
+        ) {
+          setError(
+            `Enter a valid ${mode.toLowerCase()} value for every participant.`,
+          );
+          return;
+        }
+      }
+    }
     setBusy(true);
     setError("");
     try {
       const group = groups.find((g) => g.id === groupId);
+      const splits = selected.map((uid) => ({
+        user_id: uid,
+        ...(mode === "EXACT"
+          ? { amount: Math.round(Number(values[uid] || 0) * 100) }
+          : mode === "PERCENTAGE"
+            ? { percentage: Number(values[uid] || 0) }
+            : mode === "SHARES"
+              ? { shares: Number(values[uid] || 0) }
+              : {}),
+      }));
       await apiFetch(`/api/v1/groups/${groupId}/expenses`, {
         method: "POST",
         headers: { "Idempotency-Key": `${Date.now()}-${Math.random()}` },
@@ -59,10 +108,10 @@ export default function Add() {
           description: description.trim(),
           amount: cents,
           currency: group?.currency || "NPR",
-          paid_by: user?.id,
-          expense_date: new Date().toISOString().slice(0, 10),
-          split_mode: "EQUAL",
-          splits: members.map((m) => ({ user_id: m.id })),
+          paid_by: paidBy || user?.id,
+          expense_date: date,
+          split_mode: mode,
+          splits,
         }),
       });
       router.back();
@@ -187,16 +236,89 @@ export default function Add() {
               style={s.amountInput}
             />
           </View>
-          <View style={s.split}>
-            <AntDesign name="team" size={18} color={colors.teal} />
-            <View>
-              <Text style={s.splitTitle}>Split equally</Text>
-              <Text style={s.help}>
-                Across {members.length}{" "}
-                {members.length === 1 ? "member" : "members"} · paid by you
-              </Text>
-            </View>
+          <Text style={s.label}>Paid by</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.chips}
+          >
+            {members.map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => setPaidBy(m.id)}
+                style={[s.chip, paidBy === m.id && s.chipActive]}
+              >
+                <Text style={[s.chipText, paidBy === m.id && s.chipTextActive]}>
+                  {m.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Text style={s.label}>Date</Text>
+          <TextInput
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.muted}
+            style={s.input}
+          />
+          <Text style={s.label}>How should it be split?</Text>
+          <View style={s.modeRow}>
+            {(["EQUAL", "EXACT", "PERCENTAGE", "SHARES"] as const).map((m) => (
+              <Pressable
+                key={m}
+                onPress={() => setMode(m)}
+                style={[s.modeChip, mode === m && s.modeChipActive]}
+              >
+                <Text style={[s.modeText, mode === m && s.modeTextActive]}>
+                  {labelize(m)}
+                </Text>
+              </Pressable>
+            ))}
           </View>
+          {members.map((m) => {
+            const checked = selected.includes(m.id);
+            return (
+              <View key={m.id} style={s.participant}>
+                <Pressable
+                  style={s.check}
+                  onPress={() =>
+                    setSelected(
+                      checked
+                        ? selected.filter((x) => x !== m.id)
+                        : [...selected, m.id],
+                    )
+                  }
+                >
+                  <AntDesign
+                    name={
+                      (checked ? "check-square" : "check-square-o") as never
+                    }
+                    size={18}
+                    color={colors.teal}
+                  />
+                </Pressable>
+                <Text style={[s.splitTitle, { flex: 1 }]}>{m.name}</Text>
+                {mode !== "EQUAL" && checked ? (
+                  <TextInput
+                    value={values[m.id] || ""}
+                    onChangeText={(v) => setValues({ ...values, [m.id]: v })}
+                    placeholder={
+                      mode === "EXACT"
+                        ? groups.find((g) => g.id === groupId)?.currency ||
+                          "NPR"
+                        : mode === "PERCENTAGE"
+                          ? "%"
+                          : "shares"
+                    }
+                    placeholderTextColor={colors.muted}
+                    keyboardType="decimal-pad"
+                    style={s.splitInput}
+                  />
+                ) : null}
+              </View>
+            );
+          })}
           {error ? <Text style={s.error}>{error}</Text> : null}
           <Pressable
             testID="expense-submit"
@@ -312,6 +434,37 @@ const s = StyleSheet.create({
   },
   splitTitle: { fontSize: 11, fontWeight: "800", color: colors.ink },
   help: { fontSize: 9, color: colors.muted, marginTop: 3 },
+  modeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  modeChip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: colors.paper,
+  },
+  modeChipActive: { backgroundColor: colors.teal, borderColor: colors.teal },
+  modeText: { color: colors.ink, fontSize: 9, fontWeight: "800" },
+  modeTextActive: { color: colors.white },
+  participant: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+  },
+  check: { padding: 4 },
+  splitInput: {
+    width: 90,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: colors.paper,
+    color: colors.ink,
+    fontSize: 12,
+    textAlign: "right",
+  },
   error: { color: colors.coral, fontSize: 11, marginTop: 16 },
   cta: {
     backgroundColor: colors.teal,

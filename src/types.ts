@@ -9,13 +9,18 @@ export type User = {
   has_password?: boolean;
 };
 
+export type Currency = string;
+export type GroupType = "HOME" | "TRIP" | "COUPLE" | "EVENT" | "OTHER" | string;
+export type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES" | string;
+export type MemberRole = "OWNER" | "ADMIN" | "MEMBER" | string;
+
 export type Group = {
   id: string;
   name: string;
   description: string;
   avatar_url?: string;
-  currency: string;
-  group_type: "HOME" | "TRIP" | "COUPLE" | "EVENT" | "OTHER" | string;
+  currency: Currency;
+  group_type: GroupType;
   simplify_debts: boolean;
   created_by: string;
   information?: string;
@@ -25,7 +30,7 @@ export type Member = {
   id: string;
   name: string;
   avatar_url?: string;
-  role: "OWNER" | "ADMIN" | "MEMBER" | string;
+  role: MemberRole;
   joined_at?: string;
 };
 
@@ -41,8 +46,8 @@ export type Expense = {
   group_id: string;
   description: string;
   amount: number;
-  currency: string;
-  split_mode: "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES" | string;
+  currency: Currency;
+  split_mode: SplitMode;
   paid_by: string;
   category_id?: string | null;
   notes?: string;
@@ -63,7 +68,7 @@ export type Settlement = {
   from_user: string;
   to_user: string;
   amount: number;
-  currency: string;
+  currency: Currency;
   note?: string;
   settled_at: string;
 };
@@ -100,11 +105,18 @@ export type Notification = {
   read_at?: string;
   created_at: string;
 };
+export type GroupBalance = {
+  group_id: string;
+  group_name: string;
+  currency: Currency;
+  balance: number;
+};
+export type Event = ActivityEvent;
 export type PersonalExpense = {
   id: string;
   description: string;
   amount: number;
-  currency: string;
+  currency: Currency;
   category_id?: string | null;
   notes?: string;
   expense_date: string;
@@ -126,21 +138,30 @@ export type Comment = {
 };
 export type Balance = {
   summary: { you_are_owed: number; you_owe: number; net_balance: number };
-  currency: string;
-  data: {
-    group_id: string;
-    group_name: string;
-    currency: string;
-    balance: number;
-  }[];
+  currency: Currency;
+  data: GroupBalance[];
 };
 
-export const money = (amount: number, currency = "NPR") =>
-  new Intl.NumberFormat("en-NP", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(amount / 100);
+export const money = (amount: number, currency: Currency = "NPR") => {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
+  } catch {
+    return new Intl.NumberFormat("en-NP", {
+      style: "currency",
+      currency: "NPR",
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
+  }
+};
+
+// Deprecated: use money() instead. Kept for backwards-compatibility with
+// __tests__/mobile-matrix expectations; mirrors previous src/money.ts behaviour.
+export const formatMoney = (amount: number) =>
+  `NPR ${new Intl.NumberFormat("en-IN").format(amount)}`;
 
 export const initials = (name = "You") =>
   name
