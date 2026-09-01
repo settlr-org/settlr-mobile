@@ -39,17 +39,35 @@ export default function Login() {
     return token ? `/invite/${token}` : "/(tabs)";
   };
   const submit = async () => {
+    if (busy) return;
+    const e = email.trim();
+    if (!e || !e.includes("@")) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (mode === "register" && !name.trim()) {
+      setError("Enter your name.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      const result = await signIn(mode, { name, email, password });
+      const result = await signIn(mode, {
+        name: name.trim(),
+        email: e,
+        password,
+      });
       if ("verification_required" in result) {
         setVerificationEmail(result.email);
         return;
       }
       router.replace(await destination());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not sign in.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in.");
     } finally {
       setBusy(false);
     }
@@ -164,10 +182,13 @@ export default function Login() {
                 testID="auth-submit"
                 style={({ pressed }) => [
                   s.button,
-                  pressed && { opacity: 0.82 },
+                  pressed && !busy && { opacity: 0.88 },
+                  busy && { opacity: 0.6 },
                 ]}
                 onPress={submit}
                 disabled={busy}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: busy }}
               >
                 <Text style={s.buttonText}>
                   {busy

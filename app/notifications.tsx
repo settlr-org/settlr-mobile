@@ -121,10 +121,12 @@ const s = StyleSheet.create({
     borderColor: colors.line,
   },
   unread: {
-    backgroundColor: "#f1f8f4",
+    backgroundColor: colors.unread,
     marginHorizontal: -8,
     paddingHorizontal: 8,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   icon: {
     width: 36,

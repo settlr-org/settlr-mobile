@@ -39,6 +39,13 @@ export const colors = {
   white: tokens.surface,
   accent: tokens.accent,
   positive: tokens.positive,
+  badge: "#ff3b30",
+  unread: "#f1f8f4",
+  dangerBg: "#fff1f1",
+  dangerBorder: "#e8c4c5",
+  warningBg: "#FFF3D9",
+  altGoldBg: "#f8ead4",
+  backdrop: "rgba(8,20,16,.55)",
 } as const;
 
 export const radii = {

@@ -311,9 +311,11 @@ const s = StyleSheet.create({
   error: {
     color: colors.coral,
     fontSize: 11,
-    backgroundColor: "#fde8e8",
+    backgroundColor: colors.coralSoft,
     padding: 10,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
   },
   success: {
     color: colors.teal,
@@ -370,6 +372,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.teal,
     paddingHorizontal: 16,
     height: 44,
+    minWidth: 72,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
