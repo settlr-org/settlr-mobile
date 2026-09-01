@@ -25,13 +25,17 @@ export const tokens = {
 export const colors = {
   ink: tokens.ink,
   muted: tokens.muted,
+  subtle: "#8A9992",
   cream: tokens.canvas,
   paper: tokens.surface,
   sage: tokens.surfaceMuted,
   teal: tokens.primary,
+  tealPressed: tokens.primaryStrong,
   coral: tokens.negative,
+  coralSoft: "#FCEBEC",
   line: tokens.border,
   gold: tokens.warning,
+  goldSoft: "#FFF3D9",
   white: tokens.surface,
   accent: tokens.accent,
   positive: tokens.positive,
@@ -42,6 +46,9 @@ export const radii = {
   md: tokens.radiusMd,
   lg: tokens.radiusLg,
 } as const;
+
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
+export const radius = { sm: radii.sm, md: radii.md, lg: radii.lg } as const;
 
 export const type = {
   title: Platform.select({
