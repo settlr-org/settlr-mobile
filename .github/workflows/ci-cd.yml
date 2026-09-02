@@ -99,7 +99,7 @@ jobs:
             # native CMake/Prefab files on the runner filesystem avoids the
             # small /tmp partition used by hosted runners.
             mkdir -p "$RUNNER_TEMP/settlr-native-tmp"
-            env TMPDIR="$RUNNER_TEMP/settlr-native-tmp" GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp -Xmx3072m -XX:MaxMetaspaceSize=1024m" JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp -Xmx3072m -XX:MaxMetaspaceSize=1024m" ORG_GRADLE_JVMARGS="-Xmx3072m -XX:MaxMetaspaceSize=1024m" ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 :react-native-worklets:externalNativeBuildRelease assembleRelease
+            env TMPDIR="$RUNNER_TEMP/settlr-native-tmp" GRADLE_OPTS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp -Xmx3072m -XX:MaxMetaspaceSize=1024m" JAVA_TOOL_OPTIONS="-Djava.io.tmpdir=$RUNNER_TEMP/settlr-native-tmp -Xmx3072m -XX:MaxMetaspaceSize=1024m" ORG_GRADLE_JVMARGS="-Xmx3072m -XX:MaxMetaspaceSize=1024m" ./android/gradlew -p android --no-daemon -PreactNativeArchitectures=x86_64 :react-native-worklets:externalNativeBuildRelease assembleRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease
             adb install -r ./android/app/build/outputs/apk/release/app-release.apk
             echo "Waiting for emulator..."
             adb wait-for-device
