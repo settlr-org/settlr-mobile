@@ -1,7 +1,6 @@
 appId: com.settlr.app
 ---
 # Groups — create and list
-- runFlow: login.yaml
 - launchApp:
     clearState: false
 - extendedWaitUntil:
@@ -22,9 +21,17 @@ appId: com.settlr.app
     id: "group-description"
 - inputText: "E2E test group"
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "group-submit"
+    direction: DOWN
+    timeout: 5000
 - tapOn:
     id: "group-submit"
 - extendedWaitUntil:
-    visible: "Maestro Group.*"
+    notVisible:
+      id: "group-submit"
     timeout: 10000
+- assertNotVisible:
+    id: "group-submit"
 - assertVisible: "Maestro Group.*"

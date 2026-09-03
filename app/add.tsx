@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,6 +20,7 @@ import { colors, type } from "../src/theme";
 
 type Group = { id: string; name: string; currency: string };
 type Member = { id: string; name: string };
+type SplitMode = "EQUAL" | "EXACT" | "PERCENTAGE" | "SHARES";
 
 function parseCents(str: string): number {
   const cleaned = str.replace(/,/g, "").trim();
@@ -26,6 +28,31 @@ function parseCents(str: string): number {
   const n = Number(cleaned);
   if (!Number.isFinite(n)) return NaN;
   return Math.round(n * 100);
+}
+
+function splitDefaults(mode: SplitMode, ids: string[], cents: number) {
+  if (mode === "EQUAL") return {};
+  if (mode === "SHARES") return Object.fromEntries(ids.map((id) => [id, "1"]));
+  if (!ids.length || !Number.isFinite(cents) || cents <= 0)
+    return Object.fromEntries(ids.map((id) => [id, ""]));
+  if (mode === "EXACT") {
+    const base = Math.floor(cents / ids.length);
+    const remainder = cents - base * ids.length;
+    return Object.fromEntries(
+      ids.map((id, index) => [
+        id,
+        ((base + (index < remainder ? 1 : 0)) / 100).toFixed(2),
+      ]),
+    );
+  }
+  const base = Math.floor(10000 / ids.length) / 100;
+  const remainder = 100 - base * ids.length;
+  return Object.fromEntries(
+    ids.map((id, index) => [
+      id,
+      (index === ids.length - 1 ? base + remainder : base).toFixed(2),
+    ]),
+  );
 }
 
 export default function Add() {
@@ -37,8 +64,18 @@ export default function Add() {
   const [payer, setPayer] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [splitMode, setSplitMode] = useState<SplitMode>("EQUAL");
+  const [splitValues, setSplitValues] = useState<Record<string, string>>({});
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [expenseDate, setExpenseDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<"choose" | "shared">("choose");
@@ -51,6 +88,12 @@ export default function Add() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setGroupsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    apiFetch<{ data: { id: string; name: string }[] }>("/api/v1/categories")
+      .then((r) => setCategories(r.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -70,6 +113,46 @@ export default function Add() {
     participants.length && Number.isFinite(cents) && cents > 0
       ? (cents / participants.length / 100).toFixed(2)
       : null;
+  const splitTitle =
+    splitMode === "EQUAL"
+      ? "Split equally"
+      : splitMode === "EXACT"
+        ? "Split exact amounts"
+        : splitMode === "PERCENTAGE"
+          ? "Split by percentage"
+          : "Split by shares";
+
+  useEffect(() => {
+    if (participants.length < 2 && splitMode !== "EQUAL") {
+      setSplitMode("EQUAL");
+      setSplitValues({});
+    }
+  }, [participants.length, splitMode]);
+
+  const changeSplitMode = (mode: SplitMode) => {
+    setSplitMode(mode);
+    setSplitValues(splitDefaults(mode, participants, cents));
+    setError("");
+  };
+
+  const toggleParticipant = (id: string) => {
+    const next = participants.includes(id)
+      ? participants.filter((item) => item !== id)
+      : [...participants, id];
+    setParticipants(next);
+    if (splitMode !== "EQUAL") {
+      setSplitValues((current) => ({
+        ...splitDefaults(
+          splitMode,
+          next.filter((item) => !current[item]),
+          cents,
+        ),
+        ...Object.fromEntries(
+          Object.entries(current).filter(([item]) => next.includes(item)),
+        ),
+      }));
+    }
+  };
 
   const save = async () => {
     if (busy) return;
@@ -89,6 +172,43 @@ export default function Add() {
       setError("Select at least one participant.");
       return;
     }
+    const splits = participants.map((user_id) => {
+      const raw = splitValues[user_id]?.replace(/,/g, "").trim() || "";
+      if (splitMode === "EXACT") return { user_id, amount: parseCents(raw) };
+      if (splitMode === "PERCENTAGE")
+        return { user_id, percentage: Number(raw) };
+      if (splitMode === "SHARES") return { user_id, shares: Number(raw) };
+      return { user_id };
+    });
+    if (
+      splitMode === "EXACT" &&
+      (splits.some((split) => !Number.isFinite(split.amount)) ||
+        splits.reduce((sum, split) => sum + (split.amount || 0), 0) !== cents)
+    ) {
+      setError("Exact amounts must add up to the expense total.");
+      return;
+    }
+    if (
+      splitMode === "PERCENTAGE" &&
+      (splits.some((split) => !Number.isFinite(split.percentage)) ||
+        Math.round(
+          splits.reduce((sum, split) => sum + (split.percentage || 0), 0) * 100,
+        ) /
+          100 !==
+          100)
+    ) {
+      setError("Percentages must add up to 100%.");
+      return;
+    }
+    if (
+      splitMode === "SHARES" &&
+      splits.some(
+        (split) => !Number.isFinite(split.shares) || (split.shares || 0) <= 0,
+      )
+    ) {
+      setError("Give every selected person at least one share.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -101,9 +221,11 @@ export default function Add() {
           amount: cents,
           currency,
           paid_by: payer,
-          expense_date: new Date().toISOString().slice(0, 10),
-          split_mode: "EQUAL",
-          splits: participants.map((user_id) => ({ user_id })),
+          expense_date: expenseDate,
+          category_id: categoryId || undefined,
+          notes: notes.trim() || undefined,
+          split_mode: splitMode,
+          splits,
         }),
       });
       router.replace(`/groups/${groupId}`);
@@ -113,6 +235,48 @@ export default function Add() {
       setBusy(false);
     }
   };
+
+  const submitButton = (
+    <Pressable
+      testID="expense-submit"
+      style={({ pressed }) => [
+        s.cta,
+        (busy || !members.length || !participants.length) && s.ctaDisabled,
+        pressed &&
+          !(busy || !members.length || !participants.length) &&
+          s.ctaPressed,
+      ]}
+      onPress={save}
+      disabled={busy || !members.length || !participants.length}
+      accessibilityRole="button"
+      accessibilityState={{
+        disabled: busy || !members.length || !participants.length,
+      }}
+    >
+      {busy ? (
+        <ActivityIndicator color={colors.white} size="small" />
+      ) : (
+        <AntDesign
+          name="check"
+          size={16}
+          color={
+            busy || !members.length || !participants.length
+              ? colors.muted
+              : colors.white
+          }
+        />
+      )}
+      <Text
+        style={[
+          s.ctaText,
+          (busy || !members.length || !participants.length) &&
+            s.ctaTextDisabled,
+        ]}
+      >
+        {busy ? "Saving…" : "Save expense"}
+      </Text>
+    </Pressable>
+  );
 
   if (kind === "choose") {
     return (
@@ -182,11 +346,12 @@ export default function Add() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           contentContainerStyle={s.page}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={s.header}>
@@ -247,37 +412,41 @@ export default function Add() {
           ) : null}
 
           <Text style={s.label}>Group</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.chips}
-          >
-            {groups.map((g) => {
-              const active = groupId === g.id;
-              return (
-                <Pressable
-                  key={g.id}
-                  onPress={() => setGroupId(g.id)}
-                  style={[s.chip, active && s.chipActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={`Group ${g.name}`}
-                >
-                  <AntDesign
-                    name="team"
-                    size={14}
-                    color={active ? colors.white : colors.teal}
-                  />
-                  <Text
-                    style={[s.chipText, active && s.chipTextActive]}
-                    numberOfLines={1}
+          <View style={s.chipScrollWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[s.chips, { paddingRight: 24 }]}
+              style={s.chipScroll}
+            >
+              {groups.map((g) => {
+                const active = groupId === g.id;
+                return (
+                  <Pressable
+                    key={g.id}
+                    onPress={() => setGroupId(g.id)}
+                    style={[s.chip, active && s.chipActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={`Group ${g.name}`}
                   >
-                    {g.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                    <AntDesign
+                      name="team"
+                      size={14}
+                      color={active ? colors.white : colors.teal}
+                    />
+                    <Text
+                      style={[s.chipText, active && s.chipTextActive]}
+                      numberOfLines={1}
+                    >
+                      {g.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <View style={s.chipFade} pointerEvents="none" />
+          </View>
 
           <Text style={s.label}>Description *</Text>
           <TextInput
@@ -325,9 +494,71 @@ export default function Add() {
               style={s.amountInput}
               accessibilityLabel="Expense amount"
               returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
           </View>
           <Text style={s.help}>Use numbers only. Example: 12.34</Text>
+
+          <Text style={s.label}>Category (optional)</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.chips}
+          >
+            <Pressable
+              onPress={() => setCategoryId("")}
+              style={[s.chip, !categoryId && s.chipActive]}
+              accessibilityRole="button"
+              accessibilityLabel="No category"
+            >
+              <Text style={[s.chipText, !categoryId && s.chipTextActive]}>
+                None
+              </Text>
+            </Pressable>
+            {categories.map((c) => {
+              const active = categoryId === c.id;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setCategoryId(c.id)}
+                  style={[s.chip, active && s.chipActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Category ${c.name}`}
+                >
+                  <Text
+                    style={[s.chipText, active && s.chipTextActive]}
+                    numberOfLines={1}
+                  >
+                    {c.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={s.label}>Date</Text>
+          <TextInput
+            testID="expense-date"
+            value={expenseDate}
+            onChangeText={setExpenseDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.muted}
+            style={s.input}
+            accessibilityLabel="Expense date"
+          />
+
+          <Text style={s.label}>Notes (optional)</Text>
+          <TextInput
+            testID="expense-notes"
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Add a note…"
+            placeholderTextColor={colors.muted}
+            style={[s.input, s.inputMultiline]}
+            multiline
+            numberOfLines={2}
+            accessibilityLabel="Notes"
+          />
 
           <Text style={s.label}>Paid by</Text>
           <ScrollView
@@ -398,7 +629,13 @@ export default function Add() {
           {participantsOpen ? (
             <View style={s.people}>
               <Pressable
-                onPress={() => setParticipants(members.map((m) => m.id))}
+                onPress={() => {
+                  const everyone = members.map((member) => member.id);
+                  setParticipants(everyone);
+                  if (splitMode !== "EQUAL") {
+                    setSplitValues(splitDefaults(splitMode, everyone, cents));
+                  }
+                }}
                 style={s.selectAllRow}
                 accessibilityRole="button"
               >
@@ -410,13 +647,7 @@ export default function Add() {
                 return (
                   <Pressable
                     key={member.id}
-                    onPress={() =>
-                      setParticipants(
-                        selected
-                          ? participants.filter((id) => id !== member.id)
-                          : [...participants, member.id],
-                      )
-                    }
+                    onPress={() => toggleParticipant(member.id)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: selected }}
                     style={s.person}
@@ -456,15 +687,116 @@ export default function Add() {
               <AntDesign name="team" size={16} color={colors.teal} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={s.splitTitle}>Split equally</Text>
+              <Text style={s.splitTitle}>{splitTitle}</Text>
               <Text style={s.help} numberOfLines={2}>
                 {participants.length
                   ? `Split between ${participants.length} ${participants.length === 1 ? "person" : "people"}`
                   : "Select at least one person"}
-                {perPerson ? ` · ${currency} ${perPerson} each` : ""}
+                {splitMode === "EQUAL" && perPerson
+                  ? ` · ${currency} ${perPerson} each`
+                  : ""}
               </Text>
             </View>
           </View>
+
+          {splitMode === "EQUAL" ? (
+            <>
+              {submitButton}
+              <Text style={s.foot}>
+                Everyone selected will share this equally.
+              </Text>
+            </>
+          ) : null}
+
+          <Text style={s.label}>Split method</Text>
+          <View style={s.splitModeRow} accessibilityRole="radiogroup">
+            {(["EQUAL", "EXACT", "PERCENTAGE", "SHARES"] as const).map(
+              (mode) => {
+                const active = splitMode === mode;
+                const disabled = participants.length < 2 && mode !== "EQUAL";
+                return (
+                  <Pressable
+                    key={mode}
+                    testID={`expense-split-${mode.toLowerCase()}`}
+                    onPress={() => !disabled && changeSplitMode(mode)}
+                    disabled={disabled}
+                    style={[
+                      s.splitMode,
+                      active && s.splitModeActive,
+                      disabled && s.splitModeDisabled,
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active, disabled }}
+                    accessibilityLabel={`${mode.toLowerCase()} split`}
+                  >
+                    <Text
+                      style={[
+                        s.splitModeText,
+                        active && s.splitModeTextActive,
+                        disabled && s.splitModeTextDisabled,
+                      ]}
+                    >
+                      {mode === "PERCENTAGE"
+                        ? "%"
+                        : mode[0] + mode.slice(1).toLowerCase()}
+                    </Text>
+                  </Pressable>
+                );
+              },
+            )}
+          </View>
+          {participants.length < 2 ? (
+            <Text style={s.help}>
+              Add at least one more participant to use Exact, % or Shares.
+            </Text>
+          ) : null}
+
+          {splitMode !== "EQUAL" ? (
+            <View style={s.splitValues}>
+              <Text style={s.splitValuesTitle}>
+                {splitMode === "EXACT"
+                  ? `Enter each share in ${currency}`
+                  : splitMode === "PERCENTAGE"
+                    ? "Enter percentages for each person"
+                    : "Enter shares for each person"}
+              </Text>
+              {participants.map((id) => {
+                const member = members.find((item) => item.id === id);
+                return (
+                  <View style={s.splitValueRow} key={id}>
+                    <Text style={s.splitValueName} numberOfLines={1}>
+                      {id === user?.id ? "You" : member?.name || "Member"}
+                    </Text>
+                    <View style={s.splitValueInputWrap}>
+                      <TextInput
+                        testID={`expense-split-value-${id}`}
+                        value={splitValues[id] || ""}
+                        onChangeText={(value) => {
+                          setSplitValues((current) => ({
+                            ...current,
+                            [id]: value.replace(/[^0-9.,]/g, ""),
+                          }));
+                          if (error) setError("");
+                        }}
+                        keyboardType="decimal-pad"
+                        placeholder={splitMode === "EXACT" ? "0.00" : "0"}
+                        placeholderTextColor={colors.muted}
+                        style={s.splitValueInput}
+                        accessibilityLabel={`${splitMode.toLowerCase()} for ${member?.name || "member"}`}
+                      />
+                      <Text style={s.splitValueSuffix}>
+                        {splitMode === "EXACT"
+                          ? currency
+                          : splitMode === "PERCENTAGE"
+                            ? "%"
+                            : "shares"}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
 
           {error ? (
             <View style={s.errorBox}>
@@ -477,50 +809,12 @@ export default function Add() {
             </View>
           ) : null}
 
-          <Pressable
-            testID="expense-submit"
-            style={({ pressed }) => [
-              s.cta,
-              (busy || !members.length || !participants.length) &&
-                s.ctaDisabled,
-              pressed &&
-                !(busy || !members.length || !participants.length) &&
-                s.ctaPressed,
-            ]}
-            onPress={save}
-            disabled={busy || !members.length || !participants.length}
-            accessibilityRole="button"
-            accessibilityState={{
-              disabled: busy || !members.length || !participants.length,
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <AntDesign
-                name="check"
-                size={16}
-                color={
-                  busy || !members.length || !participants.length
-                    ? colors.muted
-                    : colors.white
-                }
-              />
-            )}
-            <Text
-              style={[
-                s.ctaText,
-                (busy || !members.length || !participants.length) &&
-                  s.ctaTextDisabled,
-              ]}
-            >
-              {busy ? "Saving…" : "Save expense"}
-            </Text>
-          </Pressable>
-          <Text style={s.foot}>
-            Saves as an equal split. Edit later for exact, percentage, or
-            shares.
-          </Text>
+          {splitMode !== "EQUAL" ? (
+            <>
+              {submitButton}
+              <Text style={s.foot}>Review the split above before saving.</Text>
+            </>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -601,6 +895,19 @@ const s = StyleSheet.create({
     marginTop: 14,
     marginBottom: 6,
     letterSpacing: 0.2,
+  },
+  chipScrollWrap: { position: "relative" },
+  chipScroll: { flexGrow: 0 },
+  chipFade: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 28,
+    backgroundColor: colors.cream,
+    opacity: 0.92,
+    // subtle fade: use gradient-like opacity via border
+    borderLeftWidth: 0,
   },
   chips: { gap: 8, paddingVertical: 2 },
   chip: {
@@ -701,6 +1008,7 @@ const s = StyleSheet.create({
     color: colors.ink,
     minHeight: 44,
   },
+  inputMultiline: { minHeight: 72, textAlignVertical: "top", paddingTop: 12 },
   inputError: { borderColor: colors.coral },
   amountBox: {
     backgroundColor: colors.paper,
@@ -748,6 +1056,56 @@ const s = StyleSheet.create({
     gap: 10,
     alignItems: "center",
   },
+  splitModeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 6,
+  },
+  splitMode: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    justifyContent: "center",
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  splitModeActive: { backgroundColor: colors.teal, borderColor: colors.teal },
+  splitModeDisabled: { opacity: 0.45, backgroundColor: colors.sage },
+  splitModeText: { color: colors.ink, fontSize: 12, fontWeight: "800" },
+  splitModeTextActive: { color: colors.white },
+  splitModeTextDisabled: { color: colors.muted },
+  splitValues: {
+    backgroundColor: colors.paper,
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+    marginBottom: 8,
+  },
+  splitValuesTitle: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  splitValueRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  splitValueName: { flex: 1, minWidth: 0, color: colors.ink, fontSize: 13 },
+  splitValueInputWrap: {
+    width: 138,
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  splitValueInput: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 14,
+    paddingVertical: 6,
+  },
+  splitValueSuffix: { color: colors.muted, fontSize: 10, marginLeft: 6 },
   splitIcon: {
     width: 32,
     height: 32,

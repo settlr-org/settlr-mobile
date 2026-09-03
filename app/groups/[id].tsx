@@ -1,6 +1,6 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -133,10 +133,11 @@ export default function GroupDetail() {
       <PageTitle
         eyebrow="SHARED LEDGER"
         title={group.name}
-        titleNumberOfLines={2}
+        titleNumberOfLines={1}
         description={`${labelize(group.group_type || "GROUP")} · ${group.currency} · ${members.length} member${members.length === 1 ? "" : "s"}`}
         action={
           <Pressable
+            testID="group-manage"
             style={s.iconButton}
             onPress={() => router.push(`/groups/${id}/manage`)}
             accessibilityRole="button"
@@ -196,6 +197,7 @@ export default function GroupDetail() {
             return (
               <Pressable
                 key={item}
+                testID={`group-tab-${item}`}
                 onPress={() => setTab(item)}
                 style={[s.tab, active && s.tabActive]}
                 accessibilityRole="tab"
@@ -538,6 +540,13 @@ function ExpenseComposer({
 
   const cents = Math.round(Number(amount.replace(/,/g, "")) * 100);
 
+  useEffect(() => {
+    if (selected.length < 2 && mode !== "EQUAL") {
+      setMode("EQUAL");
+      setValues({});
+    }
+  }, [selected.length, mode]);
+
   const save = async () => {
     if (busy) return;
     if (!description.trim()) {
@@ -634,6 +643,7 @@ function ExpenseComposer({
           <ScrollView
             contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <Card style={{ maxWidth: 560, width: "100%", alignSelf: "center" }}>
@@ -708,15 +718,30 @@ function ExpenseComposer({
                 {(["EQUAL", "EXACT", "PERCENTAGE", "SHARES"] as const).map(
                   (item) => {
                     const active = mode === item;
+                    const disabled = selected.length < 2 && item !== "EQUAL";
                     return (
                       <Pressable
                         key={item}
-                        onPress={() => setMode(item)}
-                        style={[s.chip, active && s.chipActive]}
+                        onPress={() => !disabled && setMode(item)}
+                        disabled={disabled}
+                        style={[
+                          s.chip,
+                          active && s.chipActive,
+                          disabled && {
+                            opacity: 0.45,
+                            backgroundColor: colors.sage,
+                          },
+                        ]}
                         accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
+                        accessibilityState={{ selected: active, disabled }}
                       >
-                        <Text style={[s.chipText, active && s.chipTextActive]}>
+                        <Text
+                          style={[
+                            s.chipText,
+                            active && s.chipTextActive,
+                            disabled && { color: colors.muted },
+                          ]}
+                        >
                           {labelize(item)}
                         </Text>
                       </Pressable>
@@ -725,10 +750,16 @@ function ExpenseComposer({
                 )}
               </View>
 
-              <Text style={s.help}>
-                Select participants and, if needed, enter
-                amounts/percentages/shares.
-              </Text>
+              {selected.length < 2 ? (
+                <Text style={s.help}>
+                  Add at least one more participant to use Exact, % or Shares.
+                </Text>
+              ) : (
+                <Text style={s.help}>
+                  Select participants and, if needed, enter
+                  amounts/percentages/shares.
+                </Text>
+              )}
 
               {members.map((member) => {
                 const isSelected = selected.includes(member.id);
@@ -884,101 +915,124 @@ function SettlementComposer({
     >
       <View style={uiStyles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={{ width: "100%", maxWidth: 520, alignSelf: "center" }}>
-          <Card>
-            <View style={s.sheetHead}>
-              <Text style={s.sheetTitle}>Record settlement</Text>
-              <Pressable onPress={onClose} hitSlop={10} style={s.closeBtnSm}>
-                <AntDesign name="close" size={16} color={colors.ink} />
-              </Pressable>
-            </View>
-            {from && to ? (
-              <View style={s.settlementSummary}>
-                <Text style={s.settlementCopy} numberOfLines={1}>
-                  {names[from] || "Member"} paying {names[to] || "member"}
-                </Text>
-                <Text
-                  style={s.settlementAmount}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {Number.isFinite(cents) && cents > 0
-                    ? money(cents, group.currency)
-                    : "—"}
-                </Text>
-                <Text style={s.help}>
-                  This will reduce the outstanding balance. You can adjust the
-                  amount.
-                </Text>
-              </View>
-            ) : null}
-
-            {debts.length ? (
-              <View style={{ gap: 6 }}>
-                <Text style={s.label}>Suggested debts — tap to fill</Text>
-                {debts.slice(0, 6).map((debt, idx) => {
-                  const selected =
-                    from === debt.from_user && to === debt.to_user;
-                  return (
-                    <Pressable
-                      key={idx}
-                      onPress={() => {
-                        setFrom(debt.from_user);
-                        setTo(debt.to_user);
-                        setAmount(String(debt.amount / 100));
-                        setError("");
-                      }}
-                      style={[s.debtRow, selected && s.debtRowActive]}
-                      accessibilityRole="button"
+        <KeyboardAvoidingView
+          style={{ flex: 1, width: "100%" }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              padding: 16,
+            }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <View style={{ width: "100%", maxWidth: 520, alignSelf: "center" }}>
+              <Card>
+                <View style={s.sheetHead}>
+                  <Text style={s.sheetTitle}>Record settlement</Text>
+                  <Pressable
+                    onPress={onClose}
+                    hitSlop={10}
+                    style={s.closeBtnSm}
+                  >
+                    <AntDesign name="close" size={16} color={colors.ink} />
+                  </Pressable>
+                </View>
+                {from && to ? (
+                  <View style={s.settlementSummary}>
+                    <Text style={s.settlementCopy} numberOfLines={1}>
+                      {names[from] || "Member"} paying {names[to] || "member"}
+                    </Text>
+                    <Text
+                      style={s.settlementAmount}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
                     >
-                      <Text style={[s.meta, { flex: 1 }]} numberOfLines={1}>
-                        {names[debt.from_user]} → {names[debt.to_user]}
-                      </Text>
-                      <Text style={s.amount}>
-                        {money(debt.amount, group.currency)}
-                      </Text>
-                      {selected ? (
-                        <AntDesign name="check" size={12} color={colors.teal} />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : null}
+                      {Number.isFinite(cents) && cents > 0
+                        ? money(cents, group.currency)
+                        : "—"}
+                    </Text>
+                    <Text style={s.help}>
+                      This will reduce the outstanding balance. You can adjust
+                      the amount.
+                    </Text>
+                  </View>
+                ) : null}
 
-            <Field
-              label="Amount *"
-              value={amount}
-              onChangeText={(v) => {
-                setAmount(v.replace(/[^0-9.,]/g, ""));
-                if (error) setError("");
-              }}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-            />
-            <Field
-              label="Note (optional)"
-              value={note}
-              onChangeText={setNote}
-              placeholder="Cash, transfer, etc."
-            />
+                {debts.length ? (
+                  <View style={{ gap: 6 }}>
+                    <Text style={s.label}>Suggested debts — tap to fill</Text>
+                    {debts.slice(0, 6).map((debt, idx) => {
+                      const selected =
+                        from === debt.from_user && to === debt.to_user;
+                      return (
+                        <Pressable
+                          key={idx}
+                          onPress={() => {
+                            setFrom(debt.from_user);
+                            setTo(debt.to_user);
+                            setAmount(String(debt.amount / 100));
+                            setError("");
+                          }}
+                          style={[s.debtRow, selected && s.debtRowActive]}
+                          accessibilityRole="button"
+                        >
+                          <Text style={[s.meta, { flex: 1 }]} numberOfLines={1}>
+                            {names[debt.from_user]} → {names[debt.to_user]}
+                          </Text>
+                          <Text style={s.amount}>
+                            {money(debt.amount, group.currency)}
+                          </Text>
+                          {selected ? (
+                            <AntDesign
+                              name="check"
+                              size={12}
+                              color={colors.teal}
+                            />
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
 
-            {error ? <ErrorNotice message={error} /> : null}
-            <View style={uiStyles.dialogActions}>
-              <Button
-                label="Cancel"
-                secondary
-                onPress={onClose}
-                disabled={busy}
-              />
-              <Button
-                label={busy ? "Saving…" : "Save settlement"}
-                disabled={busy}
-                onPress={() => void save()}
-              />
+                <Field
+                  label="Amount *"
+                  value={amount}
+                  onChangeText={(v) => {
+                    setAmount(v.replace(/[^0-9.,]/g, ""));
+                    if (error) setError("");
+                  }}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                />
+                <Field
+                  label="Note (optional)"
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Cash, transfer, etc."
+                />
+
+                {error ? <ErrorNotice message={error} /> : null}
+                <View style={uiStyles.dialogActions}>
+                  <Button
+                    label="Cancel"
+                    secondary
+                    onPress={onClose}
+                    disabled={busy}
+                  />
+                  <Button
+                    label={busy ? "Saving…" : "Save settlement"}
+                    disabled={busy}
+                    onPress={() => void save()}
+                  />
+                </View>
+              </Card>
             </View>
-          </Card>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

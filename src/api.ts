@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 import type { User } from "./types";
 
@@ -7,8 +8,11 @@ export type { User } from "./types";
 // Parity note: web uses /api-proxy (Next.js route.ts -> cookie refresh, no refresh_token body, GET cache 60s)
 // Mobile uses direct EXPO_PUBLIC_API_URL with Bearer + refresh_token body, same 60s GET cache via requestCache,
 // and matching 401 -> refresh -> retry flow. Content-Type correctly omitted for FormData in both.
+const configuredApiUrl = Constants.expoConfig?.extra?.apiUrl;
 const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? "https://api.example.com"
+  process.env.EXPO_PUBLIC_API_URL ??
+  (typeof configuredApiUrl === "string" ? configuredApiUrl : undefined) ??
+  "https://api.example.com"
 ).replace(/\/$/, "");
 const ACCESS = "settlr_access_token";
 const REFRESH = "settlr_refresh_token";
@@ -106,6 +110,10 @@ async function fetchWithTimeout(
 }
 
 async function saveSession(session: Session) {
+  // Cached GETs are scoped to the authenticated user. A login can happen in
+  // the same JS runtime after a logout or account switch, so never allow the
+  // next account to render the previous account's data while its cache is hot.
+  clearApiCache();
   await Promise.all([
     storage.setItemAsync(ACCESS, session.access_token),
     storage.setItemAsync(REFRESH, session.refresh_token),

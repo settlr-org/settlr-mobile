@@ -2,6 +2,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -157,6 +158,37 @@ export default function Personal() {
         icon="wallet"
         onPress={() => setBudgetOpen(true)}
       />
+
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="Export CSV"
+            secondary
+            icon="download"
+            onPress={async () => {
+              const { shareApiFile } = await import("../../src/files");
+              await shareApiFile(
+                "/api/v1/personal/export.csv",
+                "settlr-personal.csv",
+              );
+            }}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            label="Export JSON"
+            secondary
+            icon="download"
+            onPress={async () => {
+              const { shareApiFile } = await import("../../src/files");
+              await shareApiFile(
+                "/api/v1/personal/export.json",
+                "settlr-personal.json",
+              );
+            }}
+          />
+        </View>
+      </View>
 
       <Card>
         <View style={local.sectionHead}>
@@ -338,6 +370,7 @@ function ExpenseEditor({
           <ScrollView
             contentContainerStyle={{ padding: 16 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <Card
@@ -379,7 +412,24 @@ function ExpenseEditor({
                 }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
               />
+              <View style={styles.dialogActions}>
+                <Button
+                  label="Cancel"
+                  secondary
+                  onPress={onClose}
+                  disabled={busy}
+                />
+                <Button
+                  testID="personal-submit"
+                  label={busy ? "Saving…" : "Save expense"}
+                  disabled={busy}
+                  onPress={() => void save()}
+                />
+              </View>
+              <Text style={local.optionalDetails}>Optional details</Text>
               <Field
                 label="Date"
                 testID="personal-date"
@@ -424,20 +474,6 @@ function ExpenseEditor({
                 </View>
               ) : null}
               {error ? <ErrorNotice message={error} /> : null}
-              <View style={styles.dialogActions}>
-                <Button
-                  label="Cancel"
-                  secondary
-                  onPress={onClose}
-                  disabled={busy}
-                />
-                <Button
-                  testID="personal-submit"
-                  label={busy ? "Saving…" : "Save expense"}
-                  disabled={busy}
-                  onPress={() => void save()}
-                />
-              </View>
             </Card>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -499,44 +535,63 @@ function BudgetEditor({
     >
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={{ width: "100%", maxWidth: 420, alignSelf: "center" }}>
-          <Card style={local.sheet}>
-            <View style={local.sheetHead}>
-              <Text style={local.sheetTitle}>Monthly budget · {month}</Text>
-              <Pressable onPress={onClose} hitSlop={10} style={local.closeBtn}>
-                <AntDesign name="close" size={14} color={colors.ink} />
-              </Pressable>
+        <KeyboardAvoidingView
+          style={{ flex: 1, width: "100%" }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              padding: 16,
+            }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <View style={{ width: "100%", maxWidth: 420, alignSelf: "center" }}>
+              <Card style={local.sheet}>
+                <View style={local.sheetHead}>
+                  <Text style={local.sheetTitle}>Monthly budget · {month}</Text>
+                  <Pressable
+                    onPress={onClose}
+                    hitSlop={10}
+                    style={local.closeBtn}
+                  >
+                    <AntDesign name="close" size={14} color={colors.ink} />
+                  </Pressable>
+                </View>
+                <Field
+                  label="Budget amount"
+                  value={amount}
+                  onChangeText={(v) => {
+                    setAmount(v.replace(/[^0-9.,]/g, ""));
+                    if (error) setError("");
+                  }}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                />
+                <Text style={local.help}>
+                  Leave empty or 0 to remove the budget. You’ll see % used on
+                  the overview.
+                </Text>
+                {error ? <ErrorNotice message={error} /> : null}
+                <View style={styles.dialogActions}>
+                  <Button
+                    label="Cancel"
+                    secondary
+                    onPress={onClose}
+                    disabled={busy}
+                  />
+                  <Button
+                    label={busy ? "Saving…" : "Update budget"}
+                    disabled={busy}
+                    onPress={() => void save()}
+                  />
+                </View>
+              </Card>
             </View>
-            <Field
-              label="Budget amount"
-              value={amount}
-              onChangeText={(v) => {
-                setAmount(v.replace(/[^0-9.,]/g, ""));
-                if (error) setError("");
-              }}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-            />
-            <Text style={local.help}>
-              Leave empty or 0 to remove the budget. You’ll see % used on the
-              overview.
-            </Text>
-            {error ? <ErrorNotice message={error} /> : null}
-            <View style={styles.dialogActions}>
-              <Button
-                label="Cancel"
-                secondary
-                onPress={onClose}
-                disabled={busy}
-              />
-              <Button
-                label={busy ? "Saving…" : "Update budget"}
-                disabled={busy}
-                onPress={() => void save()}
-              />
-            </View>
-          </Card>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -712,6 +767,13 @@ const local = StyleSheet.create({
     backgroundColor: colors.sage,
     alignItems: "center",
     justifyContent: "center",
+  },
+  optionalDetails: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   fieldLabel: {
     color: colors.ink,

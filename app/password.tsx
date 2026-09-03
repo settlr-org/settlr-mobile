@@ -1,7 +1,16 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { apiFetch } from "../src/api";
@@ -41,65 +50,78 @@ export default function PasswordSettings() {
   const settingPassword = !user?.has_password;
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.page}>
-        <Pressable style={s.back} onPress={() => router.back()}>
-          <AntDesign name="left" size={14} color={colors.teal} />
-          <Text style={s.backText}>Account</Text>
-        </Pressable>
-        <Text style={s.eyebrow}>SECURITY</Text>
-        <Text style={s.title}>
-          {settingPassword ? "Set a password" : "Change password"}
-        </Text>
-        <Text style={s.description}>
-          {settingPassword
-            ? "Add an email-and-password sign-in to this Google account."
-            : "Choose a new password for your Settlr account."}
-        </Text>
-        <View style={s.card}>
-          {!settingPassword && (
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          contentContainerStyle={s.page}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <Pressable style={s.back} onPress={() => router.back()}>
+            <AntDesign name="left" size={14} color={colors.teal} />
+            <Text style={s.backText}>Account</Text>
+          </Pressable>
+          <Text style={s.eyebrow}>SECURITY</Text>
+          <Text style={s.title}>
+            {settingPassword ? "Set a password" : "Change password"}
+          </Text>
+          <Text style={s.description}>
+            {settingPassword
+              ? "Add an email-and-password sign-in to this Google account."
+              : "Choose a new password for your Settlr account."}
+          </Text>
+          <View style={s.card}>
+            {!settingPassword && (
+              <TextInput
+                value={current}
+                onChangeText={setCurrent}
+                placeholder="Current password"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+                secureTextEntry
+                autoComplete="current-password"
+                accessibilityLabel="Current password"
+              />
+            )}
             <TextInput
-              value={current}
-              onChangeText={setCurrent}
-              placeholder="Current password"
+              value={next}
+              onChangeText={setNext}
+              placeholder="New password (at least 8 characters)"
               placeholderTextColor={colors.muted}
               style={s.input}
               secureTextEntry
-              autoComplete="current-password"
+              autoComplete="new-password"
+              accessibilityLabel="New password"
             />
-          )}
-          <TextInput
-            value={next}
-            onChangeText={setNext}
-            placeholder="New password (at least 8 characters)"
-            placeholderTextColor={colors.muted}
-            style={s.input}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-          {error ? <Text style={s.error}>{error}</Text> : null}
-          {message ? <Text style={s.success}>{message}</Text> : null}
-          <Pressable
-            style={({ pressed }) => [s.button, pressed && { opacity: 0.82 }]}
-            onPress={() => void save()}
-            disabled={busy || next.length < 8 || (!settingPassword && !current)}
-          >
-            <Text style={s.buttonText}>
-              {busy
-                ? "Saving…"
-                : settingPassword
-                  ? "Set password"
-                  : "Update password"}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+            {error ? <Text style={s.error}>{error}</Text> : null}
+            {message ? <Text style={s.success}>{message}</Text> : null}
+            <Pressable
+              style={({ pressed }) => [s.button, pressed && { opacity: 0.82 }]}
+              onPress={() => void save()}
+              disabled={
+                busy || next.length < 8 || (!settingPassword && !current)
+              }
+            >
+              <Text style={s.buttonText}>
+                {busy
+                  ? "Saving…"
+                  : settingPassword
+                    ? "Set password"
+                    : "Update password"}
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
-  page: { padding: 20 },
+  page: { padding: 20, paddingBottom: 40 },
   back: {
     flexDirection: "row",
     alignItems: "center",

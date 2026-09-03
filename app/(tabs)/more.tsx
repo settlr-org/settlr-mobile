@@ -66,7 +66,13 @@ export default function More() {
       </Card>
       <Card>
         {items.map(([label, icon, href]) => (
-          <Pressable key={href} style={s.row} onPress={() => router.push(href)}>
+          <Pressable
+            key={href}
+            testID={`more-${label.toLowerCase()}`}
+            accessibilityLabel={label}
+            style={s.row}
+            onPress={() => router.push(href)}
+          >
             <View style={s.icon}>
               <AntDesign name={icon as never} size={18} color={colors.teal} />
             </View>

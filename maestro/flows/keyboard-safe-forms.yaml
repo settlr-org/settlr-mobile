@@ -1,0 +1,29 @@
+appId: com.settlr.app
+---
+# Regression: the Android IME must not permanently cover a focused form or its
+# primary action. The test intentionally leaves the keyboard open while the
+# submit control is brought into view.
+- launchApp:
+    clearState: false
+- tapOn: "Add expense"
+- tapOn: "Shared expense"
+- extendedWaitUntil:
+    visible: "Add an expense"
+    timeout: 10000
+- tapOn:
+    id: "expense-description"
+- inputText: "Keyboard-safe expense"
+- tapOn:
+    id: "expense-amount"
+- inputText: "12.34"
+# The active numeric field must remain on-screen while the IME is open.
+- assertVisible:
+    id: "expense-amount"
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "expense-submit"
+    direction: DOWN
+    timeout: 5000
+- assertVisible:
+    id: "expense-submit"

@@ -2,7 +2,9 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { ReactNode, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,17 +26,23 @@ export function Screen({
   const body = <View style={styles.page}>{children}</View>;
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {body}
-        </ScrollView>
-      ) : (
-        body
-      )}
+      <KeyboardAvoidingView
+        style={styles.keyboardSafe}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
+            {body}
+          </ScrollView>
+        ) : (
+          body
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -60,8 +68,10 @@ export function PageTitle({
         </Text>
         <Text
           style={styles.title}
-          numberOfLines={titleNumberOfLines}
+          numberOfLines={titleNumberOfLines ?? 1}
           ellipsizeMode="tail"
+          adjustsFontSizeToFit={titleNumberOfLines === 1}
+          minimumFontScale={0.85}
         >
           {title}
         </Text>
@@ -144,7 +154,7 @@ export function Field(
       <Text style={styles.label}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
-        accessibilityState={{ disabled: !!input.editable === false }}
+        accessibilityState={{ disabled: input.editable === false }}
         placeholderTextColor={colors.muted}
         style={[
           styles.input,
@@ -281,6 +291,7 @@ export function ConfirmAction({
 
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
+  keyboardSafe: { flex: 1 },
   scroll: { paddingBottom: 96 },
   page: { padding: space.lg, gap: space.md },
   titleRow: {

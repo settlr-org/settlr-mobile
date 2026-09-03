@@ -1,7 +1,8 @@
 appId: com.settlr.app
 ---
-# Deep links — settlr:// scheme
-- runFlow: login.yaml
+# Deep links — settlr:// scheme. The parent regression suite establishes the
+# authenticated fixture once; running login again is flaky because Android
+# SecureStore survives Maestro's clearState.
 - launchApp:
     clearState: false
 # `launchApp` restarts Android even with persisted state. Wait for SecureStore
