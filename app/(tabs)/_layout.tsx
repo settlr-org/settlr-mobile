@@ -59,6 +59,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => (
               <AntDesign name="home" color={color} size={22} />
             ),
+            tabBarButtonTestID: "tab-home",
           }}
         />
         <Tabs.Screen
@@ -68,6 +69,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => (
               <AntDesign name="team" color={color} size={22} />
             ),
+            tabBarButtonTestID: "tab-groups",
           }}
         />
         <Tabs.Screen
@@ -77,6 +79,7 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => (
               <AntDesign name="pie-chart" color={color} size={22} />
             ),
+            tabBarButtonTestID: "tab-personal",
           }}
         />
         <Tabs.Screen
@@ -113,6 +116,7 @@ export default function TabsLayout() {
               borderRadius: 5,
               marginLeft: -6,
             },
+            tabBarButtonTestID: "tab-more",
           }}
         />
         {/* Friends / Activity are first-class on web; on mobile they are accessible via the More hub and direct links, keeping the 4-tab bar uncluttered (see app/(tabs)/more.tsx) */}
@@ -136,6 +140,7 @@ export default function TabsLayout() {
         />
       </Tabs>
       <Pressable
+        testID="fab-add"
         onPress={() => router.push("/add")}
         accessibilityRole="button"
         accessibilityLabel="Add expense"

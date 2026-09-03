@@ -3,6 +3,8 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -116,178 +118,193 @@ export default function Friends() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={load}
-            tintColor={colors.teal}
-          />
-        }
-        contentContainerStyle={s.page}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text style={s.eyebrow}>YOUR CIRCLE</Text>
-        <Text style={s.title}>Friends</Text>
-        <Text style={s.muted}>
-          Find people, manage requests, and keep direct ledgers.
-        </Text>
-        {error ? <Text style={s.error}>{error}</Text> : null}
-        {sent ? <Text style={s.success}>{sent}</Text> : null}
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={load}
+              tintColor={colors.teal}
+            />
+          }
+          contentContainerStyle={s.page}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <Text style={s.eyebrow}>YOUR CIRCLE</Text>
+          <Text style={s.title}>Friends</Text>
+          <Text style={s.muted}>
+            Find people, manage requests, and keep direct ledgers.
+          </Text>
+          {error ? <Text style={s.error}>{error}</Text> : null}
+          {sent ? <Text style={s.success}>{sent}</Text> : null}
 
-        <View style={s.panel}>
-          <Text style={s.panelTitle}>Find people</Text>
-          <Text style={s.panelMeta}>Search by name or email</Text>
-          <View style={s.searchRow}>
-            <View style={s.searchBox}>
-              <AntDesign name="search" size={16} color={colors.muted} />
-              <TextInput
-                testID="friends-search-input"
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Name or email address"
-                placeholderTextColor={colors.muted}
-                style={s.searchInput}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onSubmitEditing={search}
-                returnKeyType="search"
-              />
-            </View>
-            <Pressable
-              testID="friends-search-submit"
-              onPress={search}
-              style={[s.searchBtn, searching && { opacity: 0.7 }]}
-              disabled={searching}
-            >
-              <Text style={s.searchBtnText}>{searching ? "…" : "Search"}</Text>
-            </Pressable>
-          </View>
-          {results.map((u) => (
-            <View style={s.memberLine} key={u.id}>
-              <View style={s.avatarSoft}>
-                <Text style={s.avatarSoftText}>{initials(u.name)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.cardTitle}>{u.name}</Text>
-                <Text style={s.muted}>{u.email || "Settlr member"}</Text>
+          <View style={s.panel}>
+            <Text style={s.panelTitle}>Find people</Text>
+            <Text style={s.panelMeta}>Search by name or email</Text>
+            <View style={s.searchRow}>
+              <View style={s.searchBox}>
+                <AntDesign name="search" size={16} color={colors.muted} />
+                <TextInput
+                  testID="friends-search-input"
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Name or email address"
+                  placeholderTextColor={colors.muted}
+                  style={s.searchInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onSubmitEditing={search}
+                  returnKeyType="search"
+                />
               </View>
               <Pressable
-                style={s.addBtn}
-                onPress={() => void act(`/api/v1/friends/${u.id}/request`)}
+                testID="friends-search-submit"
+                onPress={search}
+                style={[s.searchBtn, searching && { opacity: 0.7 }]}
+                disabled={searching}
               >
-                <AntDesign name="user-add" size={16} color={colors.teal} />
-                <Text style={s.addBtnText}>Add</Text>
+                <Text style={s.searchBtnText}>
+                  {searching ? "…" : "Search"}
+                </Text>
               </Pressable>
             </View>
-          ))}
-        </View>
+          </View>
 
-        <View style={s.panel}>
-          <Text style={s.panelTitle}>Invite by email</Text>
-          <Text style={s.panelMeta}>Add a friend directly</Text>
-          <View style={s.inviteRow}>
-            <View style={s.inviteBox}>
-              <AntDesign name="mail" size={16} color={colors.muted} />
-              <TextInput
-                testID="friends-invite-email"
-                value={inviteEmail}
-                onChangeText={setInviteEmail}
-                placeholder="friend@example.com"
-                placeholderTextColor={colors.muted}
-                style={s.searchInput}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-                onSubmitEditing={inviteByEmail}
-                returnKeyType="send"
-              />
+          <View style={s.panel}>
+            <Text style={s.panelTitle}>Invite by email</Text>
+            <Text style={s.panelMeta}>Add a friend directly</Text>
+            <View style={s.inviteRow}>
+              <View style={s.inviteBox}>
+                <AntDesign name="mail" size={16} color={colors.muted} />
+                <TextInput
+                  testID="friends-invite-email"
+                  value={inviteEmail}
+                  onChangeText={setInviteEmail}
+                  placeholder="friend@example.com"
+                  placeholderTextColor={colors.muted}
+                  style={s.searchInput}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoCorrect={false}
+                  onSubmitEditing={inviteByEmail}
+                  returnKeyType="send"
+                />
+              </View>
+              <Pressable
+                testID="friends-invite-submit"
+                onPress={inviteByEmail}
+                style={s.inviteBtn}
+              >
+                <AntDesign name="arrow-right" size={14} color={colors.white} />
+                <Text style={s.inviteBtnText}>Send</Text>
+              </Pressable>
             </View>
-            <Pressable
-              testID="friends-invite-submit"
-              onPress={inviteByEmail}
-              style={s.inviteBtn}
-            >
-              <AntDesign name="arrow-right" size={14} color={colors.white} />
-              <Text style={s.inviteBtnText}>Send</Text>
-            </Pressable>
           </View>
-        </View>
 
-        <View style={s.panel}>
-          <View style={s.panelHead}>
-            <Text style={s.panelTitle}>Your friends</Text>
-            <Text style={s.badge}>{friends.length} connected</Text>
-          </View>
-          {friends.map((f) => (
-            <Pressable
-              style={s.friendCard}
-              key={f.user_id}
-              onPress={() => router.push(`/friends/${f.user_id}`)}
-            >
-              <View style={s.avatar}>
-                <Text style={s.avatarText}>{initials(f.name)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.cardTitle}>{f.name}</Text>
-                <Text style={s.muted}>Direct expenses and settlements</Text>
-              </View>
-              <View style={s.statusPill}>
-                <Text style={s.statusPillText}>Connected</Text>
-              </View>
-            </Pressable>
-          ))}
-          {!friends.length ? (
-            <View style={s.empty}>
-              <AntDesign name="team" size={24} color={colors.teal} />
-              <Text style={s.muted}>
-                Search for someone you know and send a friend request.
-              </Text>
+          {results.length ? (
+            <View style={s.panel}>
+              <Text style={s.panelTitle}>Search results</Text>
+              {results.map((u) => (
+                <View style={s.memberLine} key={u.id}>
+                  <View style={s.avatarSoft}>
+                    <Text style={s.avatarSoftText}>{initials(u.name)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.cardTitle}>{u.name}</Text>
+                    <Text style={s.muted}>{u.email || "Settlr member"}</Text>
+                  </View>
+                  <Pressable
+                    style={s.addBtn}
+                    onPress={() => void act(`/api/v1/friends/${u.id}/request`)}
+                  >
+                    <AntDesign name="user-add" size={16} color={colors.teal} />
+                    <Text style={s.addBtnText}>Add</Text>
+                  </Pressable>
+                </View>
+              ))}
             </View>
           ) : null}
-        </View>
 
-        <View style={s.panel}>
-          <View style={s.panelHead}>
-            <Text style={s.panelTitle}>Requests</Text>
-            <Text style={s.badge}>{requests.length} waiting</Text>
+          <View style={s.panel}>
+            <View style={s.panelHead}>
+              <Text style={s.panelTitle}>Your friends</Text>
+              <Text style={s.badge}>{friends.length} connected</Text>
+            </View>
+            {friends.map((f) => (
+              <Pressable
+                style={s.friendCard}
+                key={f.user_id}
+                onPress={() => router.push(`/friends/${f.user_id}`)}
+              >
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{initials(f.name)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardTitle}>{f.name}</Text>
+                  <Text style={s.muted}>Direct expenses and settlements</Text>
+                </View>
+                <View style={s.statusPill}>
+                  <Text style={s.statusPillText}>Connected</Text>
+                </View>
+              </Pressable>
+            ))}
+            {!friends.length ? (
+              <View style={s.empty}>
+                <AntDesign name="team" size={24} color={colors.teal} />
+                <Text style={s.muted}>
+                  Search for someone you know and send a friend request.
+                </Text>
+              </View>
+            ) : null}
           </View>
-          {requests.map((r) => (
-            <View style={s.requestCard} key={r.friendship_id}>
-              <View style={s.avatarSoft}>
-                <Text style={s.avatarSoftText}>{initials(r.name)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.cardTitle}>{r.name}</Text>
-                <Text style={s.muted}>Wants to connect</Text>
-              </View>
-              <Pressable
-                onPress={() =>
-                  void act(`/api/v1/friends/${r.from_user}/accept`)
-                }
-                style={s.accept}
-                accessibilityLabel={`Accept ${r.name}`}
-              >
-                <AntDesign name="check" size={16} color={colors.white} />
-              </Pressable>
-              <Pressable
-                onPress={() =>
-                  void act(`/api/v1/friends/${r.from_user}/reject`)
-                }
-                style={s.reject}
-                accessibilityLabel={`Reject ${r.name}`}
-              >
-                <AntDesign name="close" size={16} color={colors.coral} />
-              </Pressable>
+
+          <View style={s.panel}>
+            <View style={s.panelHead}>
+              <Text style={s.panelTitle}>Requests</Text>
+              <Text style={s.badge}>{requests.length} waiting</Text>
             </View>
-          ))}
-          {!requests.length ? (
-            <View style={s.empty}>
-              <Text style={s.emptyTitle}>No pending requests</Text>
-              <Text style={s.muted}>New requests will appear here.</Text>
-            </View>
-          ) : null}
-        </View>
-      </ScrollView>
+            {requests.map((r) => (
+              <View style={s.requestCard} key={r.friendship_id}>
+                <View style={s.avatarSoft}>
+                  <Text style={s.avatarSoftText}>{initials(r.name)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardTitle}>{r.name}</Text>
+                  <Text style={s.muted}>Wants to connect</Text>
+                </View>
+                <Pressable
+                  onPress={() =>
+                    void act(`/api/v1/friends/${r.from_user}/accept`)
+                  }
+                  style={s.accept}
+                  accessibilityLabel={`Accept ${r.name}`}
+                >
+                  <AntDesign name="check" size={16} color={colors.white} />
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    void act(`/api/v1/friends/${r.from_user}/reject`)
+                  }
+                  style={s.reject}
+                  accessibilityLabel={`Reject ${r.name}`}
+                >
+                  <AntDesign name="close" size={16} color={colors.coral} />
+                </Pressable>
+              </View>
+            ))}
+            {!requests.length ? (
+              <View style={s.empty}>
+                <Text style={s.emptyTitle}>No pending requests</Text>
+                <Text style={s.muted}>New requests will appear here.</Text>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -1,0 +1,99 @@
+appId: com.settlr.app
+---
+# Verify 6 QA fixes — real device screenshots via takeScreenshot (uses adb exec-out screencap internally)
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Good to see you|Create your account"
+    timeout: 15000
+- tapOn:
+    id: "auth-email"
+    point: "99%,50%"
+- eraseText: 100
+- inputText: "screenshots@test.local"
+- tapOn:
+    id: "auth-password"
+    point: "99%,50%"
+- eraseText: 100
+- inputText: "Test123!Test123!"
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 15000
+- assertVisible: "NET BALANCE"
+- takeScreenshot: coverage-11-home-net-balance
+# 3. Group type EVENT — create a group with EVENT and verify it succeeds
+- tapOn: "Groups"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 10000
+- tapOn:
+    id: "groups-create"
+- extendedWaitUntil:
+    visible: "New group"
+    timeout: 5000
+- tapOn:
+    id: "group-name"
+- inputText: "QA Event Group"
+- tapOn:
+    id: "group-type-event"
+- scrollUntilVisible:
+    element:
+      id: "group-submit"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-submit"
+- extendedWaitUntil:
+    notVisible:
+      id: "group-submit"
+    timeout: 10000
+- assertVisible: "QA Event Group"
+- takeScreenshot: coverage-23b-groups-event
+# 4. Long name header — create long name and capture detail with 1-line truncation
+- tapOn:
+    id: "groups-create"
+- tapOn:
+    id: "group-name"
+- eraseText: 100
+- inputText: "This is a very long group name that should truncate to one line on the header"
+- scrollUntilVisible:
+    element:
+      id: "group-submit"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-submit"
+- extendedWaitUntil:
+    visible: "This is a very long group name.*"
+    timeout: 10000
+- tapOn: "This is a very long group name.*"
+- extendedWaitUntil:
+    visible: "SHARED LEDGER"
+    timeout: 10000
+- takeScreenshot: coverage-31-group-detail
+- pressKey: Back
+# 5. Add Expense group selector with fade — capture expense form
+- tapOn: "Add expense"
+- tapOn: "Shared expense"
+- extendedWaitUntil:
+    visible: "Add an expense"
+    timeout: 10000
+- takeScreenshot: coverage-40-expense-form
+# 6. Split disabled with 1 participant — capture help text (swipe to reveal)
+- swipe:
+    start: "50%,80%"
+    end: "50%,30%"
+    duration: 400
+- takeScreenshot: coverage-43-expense-exact
+- pressKey: Back
+- pressKey: Back
+- tapOn: "Home"
+- tapOn: "More"
+- takeScreenshot: coverage-60-friends-pre
+- tapOn: "Friends"
+- takeScreenshot: coverage-60-friends
+- tapOn: "More"
+- tapOn: "Settings"
+- takeScreenshot: coverage-93-settings-password

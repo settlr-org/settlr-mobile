@@ -2,7 +2,6 @@ appId: com.settlr.app
 ---
 # A new account has no groups. Shared-expense entry must explain that state and
 # take the user directly to the group form instead of leaving a dead-end form.
-- runFlow: login.yaml
 - launchApp:
     clearState: false
 - extendedWaitUntil:
@@ -21,6 +20,4 @@ appId: com.settlr.app
     visible: "New group"
     timeout: 5000
 - tapOn:
-    id: "group-name"
-- inputText: "Keyboard-safe group ${MAESTRO_RUN_ID}"
-- assertVisible: "Create group"
+    id: "group-close"

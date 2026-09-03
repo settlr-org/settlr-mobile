@@ -316,6 +316,7 @@ function Editor({
           <ScrollView
             contentContainerStyle={{ padding: 16 }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             <Card style={{ maxWidth: 560, width: "100%", alignSelf: "center" }}>
