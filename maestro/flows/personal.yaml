@@ -1,7 +1,6 @@
 appId: com.settlr.app
 ---
 # Personal spending — add a private expense from the native Personal tab.
-- runFlow: login.yaml
 - launchApp:
     clearState: false
 - tapOn: "Personal"
@@ -17,7 +16,6 @@ appId: com.settlr.app
 - tapOn:
     id: "personal-amount"
 - inputText: "12.34"
-- hideKeyboard
 - tapOn:
     id: "personal-submit"
 - extendedWaitUntil:

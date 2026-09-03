@@ -1,7 +1,6 @@
 appId: com.settlr.app
 ---
 # Expense equal split — add and verify balances
-- runFlow: login.yaml
 - launchApp:
     clearState: false
 - tapOn: "Add expense"
@@ -18,7 +17,16 @@ appId: com.settlr.app
 - tapOn:
     id: "expense-amount"
 - inputText: "12.34"
-- hideKeyboard
+# Decimal keyboards expose an explicit Done action. Using it mirrors the
+# normal completion gesture and works reliably on the Android emulator.
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "expense-submit"
+    direction: DOWN
+    timeout: 5000
+- assertVisible:
+    id: "expense-submit"
 - tapOn:
     id: "expense-submit"
 - extendedWaitUntil:

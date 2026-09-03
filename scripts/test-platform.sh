@@ -34,4 +34,4 @@ curl -fsS -H 'Content-Type: application/json' \
 
 MAESTRO_RUN_ID="$RUN_ID" MAESTRO_EMAIL="$EMAIL" MAESTRO_PASSWORD="$PASSWORD" \
   EXPO_PUBLIC_API_URL="$API_URL" TMPDIR="$ROOT/.tmp-native-build" ./scripts/e2e.sh \
-  ./android/app/build/outputs/apk/release/app-release.apk ./maestro/flows
+  ./android/app/build/outputs/apk/release/app-release.apk ./maestro/flows/regression-suite.yaml

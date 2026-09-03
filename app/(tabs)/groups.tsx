@@ -43,6 +43,7 @@ export default function Groups() {
   const [description, setDescription] = useState("");
   const [currency, setCurrency] = useState("NPR");
   const [groupType, setGroupType] = useState("OTHER");
+  const [information, setInformation] = useState("");
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [modalError, setModalError] = useState("");
@@ -106,6 +107,7 @@ export default function Groups() {
           description: description.trim(),
           currency: currency.toUpperCase().trim(),
           group_type: groupType,
+          information: information.trim() || undefined,
         }),
       });
       setShow(false);
@@ -113,6 +115,7 @@ export default function Groups() {
       setDescription("");
       setCurrency("NPR");
       setGroupType("OTHER");
+      setInformation("");
       await load();
     } catch (e) {
       setModalError(e instanceof Error ? e.message : "Could not create group.");
@@ -278,7 +281,7 @@ export default function Groups() {
       >
         <KeyboardAvoidingView
           style={s.backdrop}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <Pressable
             style={s.backdropPress}
@@ -296,6 +299,7 @@ export default function Groups() {
                   <Text style={s.modalTitle}>New group</Text>
                 </View>
                 <Pressable
+                  testID="group-close"
                   onPress={() => !creating && setShow(false)}
                   hitSlop={12}
                   style={s.closeBtn}
@@ -359,6 +363,7 @@ export default function Groups() {
                   return (
                     <Pressable
                       key={item}
+                      testID={`group-type-${item.toLowerCase()}`}
                       onPress={() => setGroupType(item)}
                       style={[s.typeChip, active && s.typeChipActive]}
                       accessibilityRole="button"
@@ -385,6 +390,21 @@ export default function Groups() {
                   multiline
                   numberOfLines={3}
                   accessibilityLabel="Description"
+                />
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.label}>House rules / Info (optional)</Text>
+                <TextInput
+                  testID="group-information"
+                  value={information}
+                  onChangeText={setInformation}
+                  placeholder="House rules, settlement info, etc."
+                  placeholderTextColor={colors.muted}
+                  style={[s.input, s.inputMultiline]}
+                  multiline
+                  numberOfLines={2}
+                  accessibilityLabel="Group information"
                 />
               </View>
 

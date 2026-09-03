@@ -20,6 +20,11 @@ FLOWS_DIR="${2:-./maestro/flows}"
 
 echo "→ e2e: API=$API_URL APK=$APK_PATH FLOWS=$FLOWS_DIR"
 
+if [[ -z "${MAESTRO_EMAIL:-}" || -z "${MAESTRO_PASSWORD:-}" ]]; then
+  echo "✗ Missing fixture credentials. Run ./scripts/test-platform.sh, or set MAESTRO_EMAIL and MAESTRO_PASSWORD."
+  exit 1
+fi
+
 # Check ADB + emulator
 if ! adb devices | grep -q "device$"; then
   echo "✗ No emulator device found. Run: ./scripts/emulator.sh &"
@@ -68,7 +73,7 @@ adb shell am start -n com.settlr.app/.MainActivity || true
 sleep 5
 
 # Run Maestro flows
-if [[ -d "$FLOWS_DIR" ]]; then
+if [[ -d "$FLOWS_DIR" || -f "$FLOWS_DIR" ]]; then
   echo "→ Running Maestro flows in $FLOWS_DIR ..."
   maestro test "$FLOWS_DIR" --format junit --output ./maestro/report.xml || {
     echo "✗ Maestro flows failed — see ./maestro/report.xml and screenshots"
@@ -76,6 +81,6 @@ if [[ -d "$FLOWS_DIR" ]]; then
   }
   echo "✓ All Maestro flows passed"
 else
-  echo "✗ Flows dir not found: $FLOWS_DIR"
+  echo "✗ Maestro flow path not found: $FLOWS_DIR"
   exit 1
 fi

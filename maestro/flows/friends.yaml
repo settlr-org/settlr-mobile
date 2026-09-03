@@ -1,7 +1,6 @@
 appId: com.settlr.app
 ---
 # Friends — search, invite, requests
-- runFlow: login.yaml
 - launchApp:
     clearState: false
 # Wait for the signed-in shell, then use the actual More-hub navigation.
@@ -27,7 +26,11 @@ appId: com.settlr.app
     visible: ".*@.*"
     timeout: 5000
     optional: true
-- tapOn: "Invite by email"
+- scrollUntilVisible:
+    element:
+      id: "friends-invite-email"
+    direction: DOWN
+    timeout: 5000
 - tapOn:
     id: "friends-invite-email"
 - inputText: "maestro-friend+${MAESTRO_RUN_ID}@test.local"

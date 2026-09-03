@@ -14,6 +14,12 @@ flowsOrder:
   - empty-shared-expense.yaml
   - groups.yaml
   - expense-equal.yaml
+  - keyboard-safe-forms.yaml
   - personal.yaml
   - friends.yaml
   - deep-link.yaml
+  - full-coverage.yaml
+
+# Screenshots — stored via takeScreenshot (maestro 1.35+)
+screenshots:
+  outputDir: ./maestro/screenshots

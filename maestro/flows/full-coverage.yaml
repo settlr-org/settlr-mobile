@@ -1,0 +1,384 @@
+appId: com.settlr.app
+---
+# FULL COVERAGE — every tappable surface + screenshots for each section
+# Screenshots stored via takeScreenshot -> maestro/screenshots/
+# Run: maestro test maestro/flows/full-coverage.yaml --format=junit --output=maestro/screenshots/report.xml
+# Requires: MAESTRO_EMAIL / MAESTRO_PASSWORD (from scripts/test-platform.sh) and API at 10.0.2.2:18081
+
+# ──────────────────────────────────────────────────────────────
+# 0) Launch & Auth shell
+# ──────────────────────────────────────────────────────────────
+- launchApp:
+    clearState: true
+- takeScreenshot: 00-launch
+- extendedWaitUntil:
+    visible: "Good to see you|Create your account|Welcome"
+    timeout: 15000
+- takeScreenshot: 01-auth-landing
+
+# Register flow (new account) -> verify
+- tapOn:
+    id: "auth-mode-switch"
+- assertVisible: "Create your account"
+- takeScreenshot: 02-auth-register-form
+- tapOn:
+    id: "register-name"
+- inputText: "Maestro Full"
+- tapOn:
+    id: "auth-email"
+- inputText: "m${MAESTRO_RUN_ID}@full.test.local"
+- pressKey: Enter
+- inputText: "Test123!Test123!"
+- hideKeyboard
+- takeScreenshot: 03-auth-register-filled
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Verify your email"
+    timeout: 10000
+- takeScreenshot: 04-auth-verify
+- tapOn:
+    id: "auth-back-to-login"
+- assertVisible: "Good to see you"
+- takeScreenshot: 05-auth-back-to-login
+
+# Login with seeded user
+- tapOn:
+    id: "auth-email"
+    point: "99%,50%"
+- eraseText: 100
+- inputText: "screenshots@test.local"
+- tapOn:
+    id: "auth-password"
+    point: "99%,50%"
+- eraseText: 100
+- inputText: "Test123!Test123!"
+- takeScreenshot: 06-auth-login-filled
+- hideKeyboard
+- takeScreenshot: 06b-auth-login-filled-keyboard-closed
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 15000
+- assertVisible: "Home"
+- takeScreenshot: 07-home-overview
+
+# ──────────────────────────────────────────────────────────────
+# 1) Home — every quick action + refresh
+# ──────────────────────────────────────────────────────────────
+- assertVisible: "SETTLR WORKSPACE"
+- assertVisible: "NET BALANCE"
+- takeScreenshot: 10-home-hero
+- tapOn: "Add expense"
+- extendedWaitUntil:
+    visible: "Shared expense"
+    timeout: 5000
+- takeScreenshot: 11-home-add-chooser
+- tapOn: "Shared expense"
+- extendedWaitUntil:
+    visible: "Add an expense|Create a group first"
+    timeout: 10000
+- takeScreenshot: 12-home-add-shared-form
+- hideKeyboard
+- tapOn:
+    point: "10%,10%"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 5000
+- takeScreenshot: 12b-home-after-expense-back
+- tapOn: "View groups"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 10000
+- takeScreenshot: 13-home-view-groups
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 5000
+- tapOn: "New group"
+- extendedWaitUntil:
+    visible: "New group"
+    timeout: 5000
+- takeScreenshot: 14-home-new-group-modal
+- tapOn:
+    id: "group-close"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 5000
+- takeScreenshot: 14b-home-new-group-closed
+- tapOn: "Home"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 5000
+
+# ──────────────────────────────────────────────────────────────
+# 2) Groups — create + list + detail + manage
+# ──────────────────────────────────────────────────────────────
+- tapOn: "Groups"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 10000
+- takeScreenshot: 20-groups-list
+- tapOn:
+    id: "groups-create"
+- extendedWaitUntil:
+    visible: "New group"
+    timeout: 5000
+- takeScreenshot: 21-groups-create-modal
+- tapOn:
+    id: "group-name"
+- inputText: "Maestro Full ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "group-description"
+- inputText: "Full coverage group"
+- hideKeyboard
+- takeScreenshot: 22-groups-create-filled
+# Cycle group types
+- tapOn: "TRIP"
+- takeScreenshot: 23-groups-type-trip
+- tapOn: "HOME"
+- tapOn: "COUPLE"
+- tapOn: "OTHER"
+- takeScreenshot: 24-groups-type-other
+- scrollUntilVisible:
+    element:
+      id: "group-submit"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-submit"
+- extendedWaitUntil:
+    notVisible:
+      id: "group-submit"
+    timeout: 10000
+- takeScreenshot: 25-groups-after-create
+- assertVisible: "Maestro Full.*"
+# Tap first group card -> detail
+- tapOn: "Maestro Full.*"
+- extendedWaitUntil:
+    visible: "Expenses|Balances|Debts|Activity"
+    timeout: 10000
+- takeScreenshot: 26-group-detail
+# Group manage (gear icon top-right)
+- tapOn:
+    point: "90%,10%"
+- extendedWaitUntil:
+    visible: "GROUP CONTROL ROOM"
+    timeout: 5000
+- takeScreenshot: 27-group-manage
+- extendedWaitUntil:
+    visible: "Add an accepted friend"
+    timeout: 5000
+- takeScreenshot: 28-group-members
+- takeScreenshot: 29-group-invite
+- hideKeyboard
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 5000
+- takeScreenshot: 30-group-detail-after-manage
+# Back to groups list (already there)
+- takeScreenshot: 31-groups-list-after-detail
+
+# ──────────────────────────────────────────────────────────────
+# 3) Add expense — all split modes + keyboard safe
+# ──────────────────────────────────────────────────────────────
+- tapOn: "Add expense"
+- tapOn: "Shared expense"
+- extendedWaitUntil:
+    visible: "Add an expense"
+    timeout: 10000
+- takeScreenshot: 40-expense-add-form
+- tapOn:
+    id: "expense-description"
+- inputText: "Maestro Full Lunch ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "expense-amount"
+- inputText: "12.34"
+- hideKeyboard
+- takeScreenshot: 41-expense-equal-filled
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+    duration: 500
+- extendedWaitUntil:
+    visible: "Save expense"
+    timeout: 5000
+- takeScreenshot: 42-expense-submit-visible
+# A newly created group contains one person. Advanced modes are deliberately
+# disabled until another participant is selected; unequal splits are covered
+# by a dedicated multi-member fixture flow.
+- assertVisible: "Add at least one more participant to use Exact, % or Shares."
+- takeScreenshot: 43-expense-single-member-split
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+    duration: 400
+- tapOn:
+    id: "expense-submit"
+- extendedWaitUntil:
+    visible: "Maestro Full Lunch.*"
+    timeout: 10000
+- takeScreenshot: 47-expense-created
+- assertVisible: "Maestro Full Lunch.*"
+
+# ──────────────────────────────────────────────────────────────
+# 4) Personal — add / edit / budget / categories
+# ──────────────────────────────────────────────────────────────
+- pressKey: Back
+- tapOn: "Groups"
+- tapOn: "Home"
+- tapOn: "Personal"
+- extendedWaitUntil:
+    visible: "Personal"
+    timeout: 10000
+- takeScreenshot: 50-personal-list
+- tapOn:
+    id: "personal-add"
+- assertVisible: "Add personal expense"
+- takeScreenshot: 51-personal-add-modal
+- tapOn:
+    id: "personal-description"
+- inputText: "Maestro Personal ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "personal-amount"
+- inputText: "9.99"
+- hideKeyboard
+- takeScreenshot: 52-personal-filled
+- tapOn:
+    id: "personal-submit"
+- extendedWaitUntil:
+    visible: "Maestro Personal.*"
+    timeout: 10000
+- takeScreenshot: 53-personal-after-create
+# Open first personal row to edit
+- tapOn: "Maestro Personal.*"
+- takeScreenshot: 54-personal-edit-open
+- pressKey: Back
+# Budget
+- tapOn: "Update budget"
+- takeScreenshot: 55-personal-budget-modal
+- pressKey: Back
+- takeScreenshot: 56-personal-after-budget
+
+# ──────────────────────────────────────────────────────────────
+# 5) More hub + Friends + Activity + Invites + Search + Notifications + Settings
+# ──────────────────────────────────────────────────────────────
+- tapOn: "More"
+- extendedWaitUntil:
+    visible: "Everything else in your Settlr workspace."
+    timeout: 5000
+- takeScreenshot: 60-more-hub
+# Profile -> Settings
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible: "Settings|Profile|Account"
+    timeout: 5000
+- takeScreenshot: 61-more-settings
+- tapOn:
+    id: "more-notifications"
+- takeScreenshot: 62-more-notifications
+- tapOn:
+    id: "more-search"
+- takeScreenshot: 63-more-search
+- tapOn:
+    id: "more-invites"
+- takeScreenshot: 64-more-invites
+- tapOn:
+    id: "more-friends"
+- extendedWaitUntil:
+    visible: "Find people"
+    timeout: 5000
+- takeScreenshot: 65-more-friends
+# Friends search + invite
+- tapOn:
+    id: "friends-search-input"
+- inputText: "Maestro"
+- tapOn:
+    id: "friends-search-submit"
+- extendedWaitUntil:
+    visible: ".*@.*"
+    timeout: 5000
+- takeScreenshot: 66-friends-search-results
+- scrollUntilVisible:
+    element:
+      id: "friends-invite-email"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "friends-invite-email"
+- inputText: "maestro-friend+${MAESTRO_RUN_ID}@test.local"
+- hideKeyboard
+- tapOn:
+    id: "friends-invite-submit"
+- assertVisible: "Invitation sent.*"
+- takeScreenshot: 67-friends-invite-sent
+- tapOn: "More"
+- takeScreenshot: 68-more-after-friends
+
+# Activity
+- tapOn:
+    id: "more-activity"
+- extendedWaitUntil:
+    visible: "Activity"
+    timeout: 10000
+- takeScreenshot: 70-activity-feed
+- tapOn: "More"
+
+# Notifications (via More -> Notifications or direct)
+- tapOn:
+    id: "more-notifications"
+- extendedWaitUntil:
+    visible: "Notifications"
+    timeout: 5000
+- takeScreenshot: 71-notifications-list
+- tapOn: "More"
+
+# Search
+- tapOn:
+    id: "more-search"
+- extendedWaitUntil:
+    visible: "Search"
+    timeout: 5000
+- takeScreenshot: 72-search
+- tapOn: "More"
+
+# Invites
+- tapOn:
+    id: "more-invites"
+- extendedWaitUntil:
+    visible: "Invites"
+    timeout: 5000
+- takeScreenshot: 73-invites
+- tapOn: "More"
+
+# Settings / Account
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 5000
+- takeScreenshot: 74-settings
+- tapOn: "More"
+
+# ──────────────────────────────────────────────────────────────
+# 6) Deep links + back navigation
+# ──────────────────────────────────────────────────────────────
+- tapOn: "Home"
+- takeScreenshot: 80-home-final
+- openLink: "settlr://groups"
+- extendedWaitUntil:
+    visible: "Your groups"
+    timeout: 10000
+- takeScreenshot: 81-deep-link-groups
+- openLink: "settlr://activity"
+- extendedWaitUntil:
+    visible: "Activity"
+    timeout: 10000
+- takeScreenshot: 82-deep-link-activity
+- openLink: "settlr://friends"
+- takeScreenshot: 83-deep-link-friends
+- tapOn: "Home"
+- takeScreenshot: 84-final-home

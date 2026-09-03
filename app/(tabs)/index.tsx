@@ -233,6 +233,7 @@ function Quick({
   return (
     <Link href={href} asChild>
       <Pressable
+        testID={`quick-${label.toLowerCase().replace(/\s+/g, "-")}`}
         style={({ pressed }) => [
           s.quick,
           primary && s.quickPrimary,
@@ -244,7 +245,7 @@ function Quick({
         <View style={[s.quickIcon, primary && s.quickIconPrimary]}>
           <AntDesign
             name={icon as never}
-            color={primary ? colors.white : colors.teal}
+            color={primary ? colors.teal : colors.teal}
             size={18}
           />
         </View>
@@ -410,7 +411,12 @@ const s = StyleSheet.create({
     minHeight: 86,
     justifyContent: "center",
   },
-  quickPrimary: { backgroundColor: colors.teal, borderColor: colors.teal },
+  quickPrimary: {
+    backgroundColor: colors.teal,
+    borderColor: colors.tealPressed,
+    ...shadow,
+    elevation: 3,
+  },
   quickPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
   quickIcon: {
     width: 32,
@@ -420,7 +426,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quickIconPrimary: { backgroundColor: "rgba(255,255,255,0.18)" },
+  quickIconPrimary: { backgroundColor: colors.white },
   quickText: {
     fontSize: 11,
     color: colors.ink,
@@ -434,7 +440,7 @@ const s = StyleSheet.create({
     textAlign: "center",
     lineHeight: 12,
   },
-  quickHintPrimary: { color: "rgba(255,255,255,0.9)" },
+  quickHintPrimary: { color: "rgba(255,255,255,0.92)" },
   sectionHead: {
     flexDirection: "row",
     justifyContent: "space-between",

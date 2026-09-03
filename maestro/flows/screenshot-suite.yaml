@@ -1,0 +1,16 @@
+appId: com.settlr.app
+---
+# Screenshot suite — runs all coverage flows in deterministic order
+# Each sub-flow contains takeScreenshot for its section
+- runFlow: coverage/00-auth.yaml
+- runFlow: coverage/01-home.yaml
+- runFlow: coverage/02-groups.yaml
+- runFlow: coverage/03-group-detail.yaml
+- runFlow: coverage/04-expenses.yaml
+- runFlow: coverage/05-personal.yaml
+- runFlow: coverage/06-friends.yaml
+- runFlow: coverage/07-more.yaml
+- runFlow: coverage/08-notifications-search.yaml
+- runFlow: coverage/09-settings.yaml
+- runFlow: coverage/10-deep-links.yaml
+- runFlow: full-coverage.yaml
