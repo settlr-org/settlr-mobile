@@ -21,7 +21,13 @@ type Balance = {
   currency: string;
   data: unknown[];
 };
-type Friend = { user_id: string; name: string };
+type Activity = {
+  id: string;
+  type: string;
+  created_at: string;
+  group_id?: string;
+};
+type Group = { id: string; name: string; currency: string; group_type: string };
 const fmt = (n: number, c = "NPR") => money(n, c);
 
 function netSentence(net: number, c: string) {
@@ -33,19 +39,26 @@ function netSentence(net: number, c: string) {
 export default function Home() {
   const { user } = useSession();
   const [balance, setBalance] = useState<Balance>();
-  const [friends, setFriends] = useState<Friend[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const load = useCallback(async () => {
     setError("");
     try {
-      const [b, f] = await Promise.all([
+      const [b, g, a] = await Promise.all([
         apiFetch<Balance>("/api/v1/me/balances"),
-        apiFetch<{ data: Friend[] }>("/api/v1/friends"),
+        apiFetch<{ data: Group[] }>("/api/v1/groups").catch(() => ({
+          data: [] as Group[],
+        })),
+        apiFetch<{ data: Activity[] }>("/api/v1/activity?limit=5").catch(
+          () => ({ data: [] as Activity[] }),
+        ),
       ]);
       setBalance(b);
-      setFriends(f.data);
+      setGroups(g.data.slice(0, 4));
+      setActivity(a.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load overview.");
     } finally {
@@ -116,8 +129,8 @@ export default function Home() {
         <View style={s.hero} accessible accessibilityRole="header">
           <View style={s.heroTop}>
             <Text style={s.heroLabel}>NET BALANCE</Text>
-            <View style={s.heroIcon}>
-              <AntDesign name="wallet" size={16} color={colors.teal} />
+            <View style={[s.heroIcon, { backgroundColor: colors.teal }]}>
+              <AntDesign name="wallet" size={18} color={colors.white} />
             </View>
           </View>
           <Text
@@ -180,39 +193,95 @@ export default function Home() {
             label="New group"
             hint="Home · Trip"
           />
+          <Quick
+            href="/(tabs)/groups"
+            icon="swap"
+            label="Settle up"
+            hint="Pay back"
+          />
         </View>
 
         <View style={s.sectionHead}>
-          <Text style={s.section}>Friends</Text>
-          <Text style={s.sectionMeta}>{friends.length} connected</Text>
+          <Text style={s.section}>Recent activity</Text>
+          <Link href="/(tabs)/activity" asChild>
+            <Pressable hitSlop={8}>
+              <Text style={s.sectionLink}>View all</Text>
+            </Pressable>
+          </Link>
         </View>
-        {friends.slice(0, 4).map((f) => (
-          <View style={s.card} key={f.user_id} accessible>
-            <View style={s.friend}>
-              <Text style={s.friendText}>{initials(f.name)}</Text>
+        {activity.length ? (
+          activity.slice(0, 5).map((ev) => (
+            <View key={ev.id} style={s.activityRow} accessible>
+              <View style={s.activityIcon}>
+                <AntDesign
+                  name={
+                    ev.type.includes("SETTLE") || ev.type.includes("PAY")
+                      ? "swap"
+                      : ev.type.includes("EXPENSE")
+                        ? "wallet"
+                        : "team"
+                  }
+                  size={14}
+                  color={colors.teal}
+                />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.cardTitle} numberOfLines={1}>
+                  {ev.type.replaceAll("_", " ").toLowerCase()}
+                </Text>
+                <Text style={s.cardSubtitle} numberOfLines={1}>
+                  {new Date(ev.created_at).toLocaleDateString()} ·{" "}
+                  {ev.group_id ? "Group" : "System"}
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={s.cardTitle} numberOfLines={1}>
-                {f.name}
-              </Text>
-              <Text style={s.cardSubtitle} numberOfLines={1}>
-                Connected on Settlr
-              </Text>
-            </View>
-            <View style={s.checkBadge}>
-              <AntDesign name="check" color={colors.teal} size={12} />
-            </View>
+          ))
+        ) : (
+          <View style={s.card}>
+            <Text style={s.cardSubtitle}>
+              No recent activity — add an expense to get started.
+            </Text>
           </View>
-        ))}
-        {!friends.length ? (
-          <View style={s.empty}>
-            <View style={s.emptyIcon}>
-              <AntDesign name="team" size={20} color={colors.teal} />
-            </View>
-            <Text style={s.emptyTitle}>No friends yet</Text>
-            <Text style={s.emptyText}>Accepted friends will appear here.</Text>
+        )}
+
+        <View style={s.sectionHead}>
+          <Text style={s.section}>Active groups</Text>
+          <Link href="/(tabs)/groups" asChild>
+            <Pressable hitSlop={8}>
+              <Text style={s.sectionLink}>View all</Text>
+            </Pressable>
+          </Link>
+        </View>
+        {groups.length ? (
+          groups.map((g) => (
+            <Link key={g.id} href={`/groups/${g.id}`} asChild>
+              <Pressable style={s.card} accessibilityRole="button">
+                <View style={s.friend}>
+                  <AntDesign
+                    name={g.group_type === "TRIP" ? "environment" : "team"}
+                    size={16}
+                    color={colors.teal}
+                  />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.cardTitle} numberOfLines={1}>
+                    {g.name}
+                  </Text>
+                  <Text style={s.cardSubtitle} numberOfLines={1}>
+                    {g.group_type} · {g.currency}
+                  </Text>
+                </View>
+                <AntDesign name="right" size={12} color={colors.muted} />
+              </Pressable>
+            </Link>
+          ))
+        ) : (
+          <View style={s.card}>
+            <Text style={s.cardSubtitle}>
+              No groups yet — create one to start splitting.
+            </Text>
           </View>
-        ) : null}
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -224,41 +293,40 @@ function Quick({
   hint,
   primary,
 }: {
-  href: "/add" | "/(tabs)/groups" | "/(tabs)/groups?new=1";
+  href: "/add" | "/(tabs)/groups" | "/(tabs)/groups?new=1" | "/(tabs)/groups";
   icon: string;
   label: string;
   hint?: string;
   primary?: boolean;
 }) {
   return (
-    <Link href={href} asChild>
-      <Pressable
-        testID={`quick-${label.toLowerCase().replace(/\s+/g, "-")}`}
-        style={({ pressed }) => [
-          s.quick,
-          primary && s.quickPrimary,
-          pressed && s.quickPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-      >
-        <View style={[s.quickIcon, primary && s.quickIconPrimary]}>
-          <AntDesign
-            name={icon as never}
-            color={primary ? colors.teal : colors.teal}
-            size={18}
-          />
-        </View>
-        <Text style={[s.quickText, primary && s.quickTextPrimary]}>
-          {label}
-        </Text>
-        {hint ? (
-          <Text style={[s.quickHint, primary && s.quickHintPrimary]}>
-            {hint}
-          </Text>
-        ) : null}
-      </Pressable>
-    </Link>
+    <Pressable
+      testID={`quick-${label.toLowerCase().replace(/\s+/g, "-")}`}
+      onPress={() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { router } = require("expo-router");
+        router.push(href);
+      }}
+      style={({ pressed }) => [
+        s.quick,
+        primary && s.quickPrimary,
+        pressed && s.quickPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <View style={[s.quickIcon, primary && s.quickIconPrimary]}>
+        <AntDesign
+          name={icon as never}
+          color={primary ? colors.teal : colors.teal}
+          size={18}
+        />
+      </View>
+      <Text style={[s.quickText, primary && s.quickTextPrimary]}>{label}</Text>
+      {hint ? (
+        <Text style={[s.quickHint, primary && s.quickHintPrimary]}>{hint}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -271,13 +339,13 @@ const s = StyleSheet.create({
     gap: 12,
     padding: 24,
   },
-  page: { padding: 16, paddingBottom: 110, gap: 14 },
+  page: { padding: 12, paddingBottom: 72, gap: 10 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 4,
+    gap: 8,
+    marginBottom: 2,
   },
   eyebrow: {
     fontSize: 10,
@@ -288,22 +356,22 @@ const s = StyleSheet.create({
   },
   title: {
     fontFamily: type.title,
-    fontSize: 28,
+    fontSize: 22,
     color: colors.ink,
     marginTop: 4,
-    lineHeight: 32,
+    lineHeight: 28,
   },
   subtle: { fontSize: 12, color: colors.muted, marginTop: 4, lineHeight: 16 },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: colors.teal,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  avatarText: { color: colors.white, fontSize: 13, fontWeight: "800" },
+  avatarText: { color: colors.white, fontSize: 12, fontWeight: "800" },
   errorBox: {
     backgroundColor: colors.coralSoft,
     borderColor: colors.dangerBorder,
@@ -321,9 +389,9 @@ const s = StyleSheet.create({
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 22,
-    padding: 18,
-    gap: 6,
+    borderRadius: 18,
+    padding: 14,
+    gap: 4,
     ...shadow,
   },
   heroTop: {
@@ -332,8 +400,8 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   heroIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 10,
     backgroundColor: colors.sage,
     alignItems: "center",
@@ -348,26 +416,26 @@ const s = StyleSheet.create({
   heroAmount: {
     fontFamily: type.title,
     color: colors.ink,
-    fontSize: 32,
-    lineHeight: 36,
-    marginTop: 10,
+    fontSize: 28,
+    lineHeight: 32,
+    marginTop: 8,
   },
   amountPositive: { color: colors.teal },
   amountNegative: { color: colors.coral },
   heroSentence: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: colors.ink,
     marginTop: 2,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   heroMeta: { fontSize: 11, color: colors.muted, lineHeight: 16, marginTop: 2 },
   muted: { fontSize: 11, color: colors.muted, lineHeight: 15 },
   split: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    marginTop: 12,
-    paddingTop: 14,
+    marginTop: 10,
+    paddingTop: 10,
     flexDirection: "row",
     alignItems: "stretch",
   },
@@ -386,41 +454,46 @@ const s = StyleSheet.create({
   positive: {
     color: colors.teal,
     fontWeight: "800",
-    fontSize: 15,
+    fontSize: 14,
     marginTop: 2,
   },
   negative: {
     color: colors.coral,
     fontWeight: "800",
-    fontSize: 15,
+    fontSize: 14,
     marginTop: 2,
   },
-  negativeLarge: { fontSize: 15 },
+  negativeLarge: { fontSize: 14 },
   splitHelp: { fontSize: 10, color: colors.muted, marginTop: 1 },
-  actions: { flexDirection: "row", gap: 10 },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "space-between",
+  },
   quick: {
-    flex: 1,
+    width: "48%",
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 10,
     alignItems: "center",
     gap: 6,
-    minHeight: 86,
+    minHeight: 80,
     justifyContent: "center",
   },
   quickPrimary: {
     backgroundColor: colors.teal,
-    borderColor: colors.tealPressed,
+    borderColor: colors.teal,
     ...shadow,
     elevation: 3,
   },
   quickPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
   quickIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 10,
     backgroundColor: colors.sage,
     alignItems: "center",
@@ -440,46 +513,63 @@ const s = StyleSheet.create({
     textAlign: "center",
     lineHeight: 12,
   },
-  quickHintPrimary: { color: "rgba(255,255,255,0.92)" },
+  quickHintPrimary: { color: colors.onPrimaryMuted },
   sectionHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    marginTop: 4,
+    marginTop: 2,
     marginBottom: 2,
   },
-  section: { fontFamily: type.title, fontSize: 20, color: colors.ink },
+  section: { fontFamily: type.title, fontSize: 18, color: colors.ink },
   sectionMeta: { fontSize: 11, color: colors.muted, fontWeight: "600" },
+  sectionLink: { fontSize: 11, color: colors.teal, fontWeight: "700" },
+  activityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  activityIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.sage,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   card: {
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 14,
+    padding: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 11,
-    minHeight: 62,
+    gap: 8,
+    minHeight: 56,
   },
   cardTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     color: colors.ink,
     textTransform: "capitalize",
   },
   cardSubtitle: { fontSize: 11, color: colors.muted, marginTop: 2 },
   friend: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: colors.sage,
     alignItems: "center",
     justifyContent: "center",
   },
   friendText: { fontSize: 11, fontWeight: "800", color: colors.teal },
   checkBadge: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     borderRadius: 8,
     backgroundColor: colors.sage,
     alignItems: "center",
@@ -487,22 +577,22 @@ const s = StyleSheet.create({
   },
   empty: {
     backgroundColor: colors.paper,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 14,
+    padding: 20,
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
     borderColor: colors.line,
   },
   emptyIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     backgroundColor: colors.sage,
     alignItems: "center",
     justifyContent: "center",
   },
-  emptyTitle: { fontFamily: type.title, fontSize: 16, color: colors.ink },
+  emptyTitle: { fontFamily: type.title, fontSize: 15, color: colors.ink },
   emptyText: {
     fontSize: 12,
     color: colors.muted,

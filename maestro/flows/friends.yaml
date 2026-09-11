@@ -19,13 +19,25 @@ appId: com.settlr.app
     timeout: 5000
 - tapOn:
     id: "friends-search-input"
-- inputText: "Maestro"
+- inputText: "${MAESTRO_SEARCH_EMAIL}"
 - tapOn:
     id: "friends-search-submit"
 - extendedWaitUntil:
-    visible: ".*@.*"
+    visible: "${MAESTRO_SEARCH_NAME}"
     timeout: 5000
-    optional: true
+- hideKeyboard
+- tapOn:
+    id: "friend-result-.*"
+- extendedWaitUntil:
+    visible: "Add friend"
+    timeout: 5000
+- tapOn:
+    id: "friend-request"
+- assertVisible: "Request sent"
+- pressKey: Back
+- extendedWaitUntil:
+    visible: "Find people"
+    timeout: 5000
 - scrollUntilVisible:
     element:
       id: "friends-invite-email"
@@ -38,3 +50,21 @@ appId: com.settlr.app
 - tapOn:
     id: "friends-invite-submit"
 - assertVisible: "Invitation sent.*"
+- scrollUntilVisible:
+    element:
+      text: "Maestro Partner"
+    direction: DOWN
+    timeout: 5000
+- tapOn: "Accept Maestro Partner"
+- extendedWaitUntil:
+    visible: "Maestro Partner"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: "Maestro Core"
+    direction: DOWN
+    timeout: 5000
+- tapOn: "Reject Maestro Core"
+- extendedWaitUntil:
+    notVisible: "Reject Maestro Core"
+    timeout: 10000

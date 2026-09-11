@@ -49,6 +49,7 @@ export default function Settings() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [loading, setLoading] = useState(true);
+  const [profileBusy, setProfileBusy] = useState(false);
   const load = useCallback(async () => {
     try {
       const [p, s, pay] = await Promise.all([
@@ -76,6 +77,12 @@ export default function Settings() {
     }, [load]),
   );
   const saveProfile = async () => {
+    if (profileBusy) return;
+    if (!name.trim()) {
+      setError("Name is required.");
+      return;
+    }
+    setProfileBusy(true);
     try {
       await apiFetch("/api/v1/me", {
         method: "PATCH",
@@ -92,6 +99,8 @@ export default function Settings() {
       setError(
         cause instanceof Error ? cause.message : "Could not save profile.",
       );
+    } finally {
+      setProfileBusy(false);
     }
   };
   const toggle = async (key: keyof Prefs) => {
@@ -130,15 +139,36 @@ export default function Settings() {
       {error ? <ErrorNotice message={error} retry={() => void load()} /> : null}
       {saved ? <Text style={s.saved}>{saved}</Text> : null}
       <Card>
+        <Text style={s.section}>Account access</Text>
+        <Text style={s.meta}>Signed in as {user?.email}.</Text>
+        <Button
+          testID="settings-sign-out"
+          label="Sign out"
+          secondary
+          onPress={() => void leave()}
+        />
+      </Card>
+      <Card>
         <Text style={s.section}>Profile</Text>
-        <Field label="Name" value={name} onChangeText={setName} />
         <Field
+          testID="settings-name"
+          label="Name"
+          value={name}
+          onChangeText={setName}
+        />
+        <Field
+          testID="settings-currency"
           label="Default currency"
           value={currency}
           onChangeText={setCurrency}
           autoCapitalize="characters"
         />
-        <Button label="Save profile" onPress={() => void saveProfile()} />
+        <Button
+          testID="settings-profile-submit"
+          label={profileBusy ? "Saving…" : "Save profile"}
+          disabled={profileBusy}
+          onPress={() => void saveProfile()}
+        />
       </Card>
       <Card>
         <Text style={s.section}>Security</Text>
@@ -153,6 +183,7 @@ export default function Settings() {
           <AntDesign name="right" size={13} color={colors.muted} />
         </Pressable>
         <Button
+          testID="settings-resend-verification"
           label="Resend verification email"
           secondary
           onPress={() =>
@@ -177,6 +208,7 @@ export default function Settings() {
               <View style={s.row} key={key}>
                 <Text style={[s.item, { flex: 1 }]}>{label}</Text>
                 <Switch
+                  testID={`settings-notification-${key}`}
                   value={prefs[key]}
                   onValueChange={() => void toggle(key)}
                   trackColor={{ true: colors.teal }}
@@ -212,6 +244,7 @@ export default function Settings() {
           </View>
         ))}
         <Button
+          testID="settings-sign-out-others"
           label="Sign out other sessions"
           secondary
           onPress={() =>
@@ -256,7 +289,6 @@ export default function Settings() {
         />
       </Card>
       <Card>
-        <Button label="Sign out" danger onPress={() => void leave()} />
         <ConfirmAction
           title="Delete your account?"
           description="This permanently removes your Settlr account and cannot be undone."
@@ -266,7 +298,14 @@ export default function Settings() {
             await leave();
           }}
         >
-          {(open) => <Button label="Delete account" danger onPress={open} />}
+          {(open) => (
+            <Button
+              testID="settings-delete-account"
+              label="Delete account"
+              danger
+              onPress={open}
+            />
+          )}
         </ConfirmAction>
       </Card>
     </Screen>
@@ -283,7 +322,11 @@ function PaymentEditor({
   const [handle, setHandle] = useState(payment?.payment_handle || "");
   const [qr, setQr] = useState(payment?.bank_qr_url || "");
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+  const [busy, setBusy] = useState(false);
   const save = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
       await apiFetch("/api/v1/me/payment-info", {
         method: "PUT",
@@ -294,36 +337,48 @@ function PaymentEditor({
         }),
       });
       await onSaved();
+      setSaved("Payment details saved.");
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
           : "Could not save payment details.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   return (
     <>
       <Field
         label="Bank"
+        testID="settings-bank"
         value={bank}
         onChangeText={setBank}
         placeholder="Optional"
       />
       <Field
         label="Payment handle"
+        testID="settings-payment-handle"
         value={handle}
         onChangeText={setHandle}
         placeholder="Optional"
       />
       <Field
         label="QR image URL"
+        testID="settings-qr-url"
         value={qr}
         onChangeText={setQr}
         placeholder="Optional"
       />
       {error ? <ErrorNotice message={error} /> : null}
-      <Button label="Save payment details" onPress={() => void save()} />
+      {saved ? <Text style={s.saved}>{saved}</Text> : null}
+      <Button
+        testID="settings-payment-submit"
+        label={busy ? "Saving…" : "Save payment details"}
+        disabled={busy}
+        onPress={() => void save()}
+      />
     </>
   );
 }

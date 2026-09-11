@@ -128,7 +128,7 @@ const s = StyleSheet.create({
   logout: {
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "#e8c4c5",
+    borderColor: colors.dangerBorder,
     borderRadius: 15,
     padding: 16,
     flexDirection: "row",

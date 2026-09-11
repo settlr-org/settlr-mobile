@@ -1,0 +1,31 @@
+appId: com.settlr.app
+---
+# Password recovery plus invalid deep-link states. The API intentionally returns
+# the same success state for known and unknown addresses.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Good to see you"
+    timeout: 15000
+- tapOn: "Forgot your password.*"
+- assertVisible: "Reset your password"
+- tapOn: "Email address"
+- inputText: "${MAESTRO_EMAIL}"
+- hideKeyboard
+- tapOn: "Send reset link"
+- extendedWaitUntil:
+    visible: "Check your inbox"
+    timeout: 10000
+- tapOn: "Back to sign in"
+- assertVisible: "Good to see you"
+- openLink: "settlr://reset-password"
+- extendedWaitUntil:
+    visible: "Choose a new password"
+    timeout: 5000
+- assertVisible: "Reset password"
+- openLink: "settlr://verify-email"
+- extendedWaitUntil:
+    visible: "This verification link is missing its token."
+    timeout: 5000
+- tapOn: "Go to sign in"
+- assertVisible: "Good to see you"

@@ -11,13 +11,69 @@ appId: com.settlr.app
     id: "personal-add"
 - assertVisible: "Add personal expense"
 - tapOn:
+    id: "personal-submit"
+- assertVisible: "Enter a description."
+- tapOn:
     id: "personal-description"
 - inputText: "Maestro Personal ${MAESTRO_RUN_ID}"
 - tapOn:
     id: "personal-amount"
+- inputText: "0"
+- hideKeyboard
+- tapOn:
+    id: "personal-submit"
+- assertVisible: "Enter an amount greater than zero."
+- tapOn:
+    id: "personal-amount"
+- eraseText: 20
 - inputText: "12.34"
+- hideKeyboard
 - tapOn:
     id: "personal-submit"
 - extendedWaitUntil:
     visible: "Maestro Personal.*"
+    timeout: 10000
+- tapOn:
+    id: "personal-edit-.*"
+- tapOn:
+    id: "personal-description"
+- eraseText: 100
+- inputText: "Maestro Personal Updated ${MAESTRO_RUN_ID}"
+- hideKeyboard
+- tapOn:
+    id: "personal-submit"
+- extendedWaitUntil:
+    visible: "Maestro Personal Updated.*"
+    timeout: 10000
+- tapOn:
+    id: "personal-budget-open"
+- tapOn:
+    id: "personal-budget-amount"
+- eraseText: 20
+- inputText: "25.00"
+- hideKeyboard
+- tapOn:
+    id: "personal-budget-submit"
+- extendedWaitUntil:
+    visible: ".*25.00.*"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "personal-category-name"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "personal-category-name"
+- inputText: "Maestro Category ${MAESTRO_RUN_ID}"
+- hideKeyboard
+- tapOn:
+    id: "personal-category-submit"
+- extendedWaitUntil:
+    visible: "Maestro Category.*"
+    timeout: 10000
+- tapOn: "Delete Maestro Personal Updated.*"
+- assertVisible: "Delete personal expense?"
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: "Maestro Personal Updated.*"
     timeout: 10000

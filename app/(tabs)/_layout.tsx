@@ -40,16 +40,16 @@ export default function TabsLayout() {
           tabBarActiveTintColor: colors.teal,
           tabBarInactiveTintColor: colors.muted,
           tabBarStyle: {
-            height: 76 + insets.bottom,
-            paddingTop: 8,
-            paddingBottom: 12 + insets.bottom,
+            height: 68 + insets.bottom,
+            paddingTop: 6,
+            paddingBottom: 8 + insets.bottom,
             backgroundColor: colors.paper,
             borderTopWidth: 1,
             borderTopColor: colors.line,
           },
-          tabBarItemStyle: { paddingVertical: 4 },
-          tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: 2 },
-          tabBarIconStyle: { marginBottom: -2 },
+          tabBarItemStyle: { paddingVertical: 2 },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: "700", marginTop: 1 },
+          tabBarIconStyle: { marginBottom: -1 },
         }}
       >
         <Tabs.Screen
@@ -148,21 +148,21 @@ export default function TabsLayout() {
         hitSlop={8}
         style={({ pressed }) => ({
           position: "absolute",
-          bottom: 86 + insets.bottom,
+          bottom: 72 + insets.bottom,
           right: 16,
-          width: 56,
-          height: 56,
-          borderRadius: 18,
+          width: 48,
+          height: 48,
+          borderRadius: 16,
           backgroundColor: colors.teal,
           alignItems: "center",
           justifyContent: "center",
           shadowColor: colors.ink,
           shadowOpacity: pressed ? 0.12 : 0.15,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 3 },
           elevation: 4,
           borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.12)",
+          borderColor: colors.onPrimaryBorder,
           opacity: pressed ? 0.96 : 1,
         })}
       >

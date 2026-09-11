@@ -25,7 +25,7 @@ export function Screen({
 }) {
   const body = <View style={styles.page}>{children}</View>;
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardSafe}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -292,12 +292,12 @@ export function ConfirmAction({
 export const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.cream },
   keyboardSafe: { flex: 1 },
-  scroll: { paddingBottom: 96 },
-  page: { padding: space.lg, gap: space.md },
+  scroll: { paddingBottom: 72 },
+  page: { padding: space.md, gap: space.sm },
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: space.md,
+    gap: space.sm,
     marginBottom: 2,
   },
   titleAction: { marginLeft: space.sm, alignSelf: "flex-start", paddingTop: 2 },
@@ -311,23 +311,23 @@ export const styles = StyleSheet.create({
   title: {
     fontFamily: type.title,
     color: colors.ink,
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 22,
+    lineHeight: 28,
     marginTop: 4,
   },
   description: {
     color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 4,
   },
   card: {
     backgroundColor: colors.paper,
     borderColor: colors.line,
     borderWidth: 1,
     borderRadius: radius.lg,
-    padding: space.lg,
-    gap: space.md,
+    padding: space.md,
+    gap: space.sm,
     ...shadow,
   },
   button: {

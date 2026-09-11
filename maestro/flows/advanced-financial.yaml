@@ -1,0 +1,300 @@
+appId: com.settlr.app
+---
+# Multi-member financial coverage. scripts/test-platform.sh provisions this
+# account and ledger through the public API before Maestro starts.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "tab-more"
+- tapOn:
+    id: "more-settings"
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "settings-sign-out"
+- extendedWaitUntil:
+    visible: "Good to see you"
+    timeout: 10000
+- tapOn:
+    id: "auth-email"
+- inputText: "${MAESTRO_CORE_EMAIL}"
+- tapOn:
+    id: "auth-password"
+- inputText: "${MAESTRO_PASSWORD}"
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Overview"
+    timeout: 15000
+- tapOn:
+    id: "tab-groups"
+- extendedWaitUntil:
+    visible: "${MAESTRO_GROUP_NAME}"
+    timeout: 10000
+- tapOn: "${MAESTRO_GROUP_NAME}"
+- extendedWaitUntil:
+    visible: "Expenses"
+    timeout: 10000
+
+# Required fields and zero-value validation.
+- tapOn:
+    id: "group-expense-create"
+- scrollUntilVisible:
+    element:
+      id: "group-expense-submit"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-expense-submit"
+- assertVisible: "Add a description."
+- tapOn:
+    id: "group-expense-description"
+- inputText: "E2E Exact ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "group-expense-amount"
+- inputText: "0"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- assertVisible: "Enter an amount greater than 0."
+
+# Exact split: reject a mismatch, then save a valid 6.00 / 4.00 split.
+- tapOn:
+    id: "group-expense-amount"
+- eraseText: 20
+- inputText: "10.00"
+- hideKeyboard
+# Explicitly exercise payer and participant selection before calculating.
+- scrollUntilVisible:
+    element:
+      id: "group-expense-participant-1"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-expense-participant-1"
+- assertVisible: "Add at least one more participant.*"
+- tapOn:
+    id: "group-expense-participant-1"
+- scrollUntilVisible:
+    element:
+      id: "group-expense-payer-1"
+    direction: UP
+    timeout: 5000
+- tapOn:
+    id: "group-expense-payer-1"
+- tapOn:
+    id: "group-expense-payer-0"
+- tapOn:
+    id: "group-expense-split-exact"
+- tapOn:
+    id: "group-expense-split-value-0"
+- inputText: "6.00"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "group-expense-split-value-1"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-expense-split-value-1"
+- inputText: "3.00"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- assertVisible: "Exact amounts must add up to the expense total."
+- tapOn:
+    id: "group-expense-split-value-1"
+- eraseText: 20
+- inputText: "4.00"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- extendedWaitUntil:
+    visible: "E2E Exact.*"
+    timeout: 10000
+
+# Percentage split: reject 90%, then accept 100%.
+- tapOn:
+    id: "group-expense-create"
+- tapOn:
+    id: "group-expense-description"
+- inputText: "E2E Percentage ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "group-expense-amount"
+- inputText: "20.00"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-split-percentage"
+- tapOn:
+    id: "group-expense-split-value-0"
+- inputText: "50"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "group-expense-split-value-1"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-expense-split-value-1"
+- inputText: "40"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- assertVisible: "Percentages must add up to 100%."
+- tapOn:
+    id: "group-expense-split-value-1"
+- eraseText: 20
+- inputText: "50"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- extendedWaitUntil:
+    visible: "E2E Percentage.*"
+    timeout: 10000
+
+# Shares split: reject zero shares, then save a 2:1 split.
+- tapOn:
+    id: "group-expense-create"
+- tapOn:
+    id: "group-expense-description"
+- inputText: "E2E Shares ${MAESTRO_RUN_ID}"
+- tapOn:
+    id: "group-expense-amount"
+- inputText: "30.00"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-split-shares"
+- tapOn:
+    id: "group-expense-split-value-0"
+- inputText: "2"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "group-expense-split-value-1"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "group-expense-split-value-1"
+- inputText: "0"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- assertVisible: "Give every selected person at least one share."
+- tapOn:
+    id: "group-expense-split-value-1"
+- eraseText: 20
+- inputText: "1"
+- hideKeyboard
+- tapOn:
+    id: "group-expense-submit"
+- extendedWaitUntil:
+    visible: "E2E Shares.*"
+    timeout: 10000
+
+# Settlement creation, validation, edit, deletion, and resulting history.
+- tapOn:
+    id: "group-tab-settlements"
+- tapOn:
+    id: "settlement-create"
+- assertVisible: "Who paid?"
+- assertVisible: "Who received it?"
+- tapOn:
+    id: "settlement-amount"
+- eraseText: 20
+- inputText: "0"
+- hideKeyboard
+- tapOn:
+    id: "settlement-submit"
+- assertVisible: "Choose payer, recipient, and an amount greater than 0."
+- tapOn:
+    id: "settlement-amount"
+- eraseText: 20
+- inputText: "1.23"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "settlement-note"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "settlement-note"
+- inputText: "Maestro transfer"
+- hideKeyboard
+- tapOn:
+    id: "settlement-submit"
+- extendedWaitUntil:
+    visible: ".*Maestro transfer.*"
+    timeout: 10000
+- tapOn: "Edit settlement.*"
+- tapOn:
+    id: "settlement-amount"
+- eraseText: 20
+- inputText: "2.34"
+- hideKeyboard
+- tapOn:
+    id: "settlement-submit"
+- extendedWaitUntil:
+    visible: ".*2.34.*"
+    timeout: 10000
+- tapOn: "Delete settlement.*"
+- assertVisible: "Delete settlement?"
+- tapOn: "Delete settlement"
+- extendedWaitUntil:
+    notVisible: ".*2.34.*"
+    timeout: 10000
+
+# Expense detail mutation and owned-comment deletion.
+- tapOn:
+    id: "group-tab-expenses"
+- tapOn: "E2E Exact.*"
+- extendedWaitUntil:
+    visible: "How it was split"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "comment-body"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "comment-body"
+- inputText: "Maestro detail comment"
+- hideKeyboard
+- tapOn:
+    id: "comment-submit"
+- extendedWaitUntil:
+    visible: "Maestro detail comment"
+    timeout: 10000
+- tapOn: "Delete comment"
+- tapOn: "Delete comment"
+- extendedWaitUntil:
+    notVisible: "Maestro detail comment"
+    timeout: 10000
+- tapOn:
+    id: "expense-edit"
+- tapOn:
+    id: "expense-edit-description"
+- eraseText: 100
+- inputText: "E2E Exact Updated ${MAESTRO_RUN_ID}"
+- hideKeyboard
+- tapOn:
+    id: "expense-edit-submit"
+- extendedWaitUntil:
+    visible: "E2E Exact Updated.*"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "expense-delete"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "expense-delete"
+- assertVisible: "Delete expense?"
+- tapOn: "Delete"
+- extendedWaitUntil:
+    visible: "Expenses"
+    timeout: 10000
+- assertNotVisible: "E2E Exact Updated.*"

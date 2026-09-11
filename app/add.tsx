@@ -76,6 +76,7 @@ export default function Add() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     [],
   );
+  const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<"choose" | "shared">("choose");
@@ -499,66 +500,86 @@ export default function Add() {
           </View>
           <Text style={s.help}>Use numbers only. Example: 12.34</Text>
 
-          <Text style={s.label}>Category (optional)</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.chips}
+          <Pressable
+            onPress={() => setShowMore((v) => !v)}
+            style={s.showMore}
+            accessibilityRole="button"
+            accessibilityLabel={showMore ? "Hide details" : "Show more details"}
           >
-            <Pressable
-              onPress={() => setCategoryId("")}
-              style={[s.chip, !categoryId && s.chipActive]}
-              accessibilityRole="button"
-              accessibilityLabel="No category"
-            >
-              <Text style={[s.chipText, !categoryId && s.chipTextActive]}>
-                None
-              </Text>
-            </Pressable>
-            {categories.map((c) => {
-              const active = categoryId === c.id;
-              return (
+            <Text style={s.showMoreText}>
+              {showMore ? "Hide details" : "Show more (category, date, notes)"}
+            </Text>
+            <AntDesign
+              name={showMore ? "up" : "down"}
+              size={12}
+              color={colors.teal}
+            />
+          </Pressable>
+
+          {showMore ? (
+            <>
+              <Text style={s.label}>Category (optional)</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={s.chips}
+              >
                 <Pressable
-                  key={c.id}
-                  onPress={() => setCategoryId(c.id)}
-                  style={[s.chip, active && s.chipActive]}
+                  onPress={() => setCategoryId("")}
+                  style={[s.chip, !categoryId && s.chipActive]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Category ${c.name}`}
+                  accessibilityLabel="No category"
                 >
-                  <Text
-                    style={[s.chipText, active && s.chipTextActive]}
-                    numberOfLines={1}
-                  >
-                    {c.name}
+                  <Text style={[s.chipText, !categoryId && s.chipTextActive]}>
+                    None
                   </Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
+                {categories.map((c) => {
+                  const active = categoryId === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setCategoryId(c.id)}
+                      style={[s.chip, active && s.chipActive]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Category ${c.name}`}
+                    >
+                      <Text
+                        style={[s.chipText, active && s.chipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {c.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
-          <Text style={s.label}>Date</Text>
-          <TextInput
-            testID="expense-date"
-            value={expenseDate}
-            onChangeText={setExpenseDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.muted}
-            style={s.input}
-            accessibilityLabel="Expense date"
-          />
+              <Text style={s.label}>Date</Text>
+              <TextInput
+                testID="expense-date"
+                value={expenseDate}
+                onChangeText={setExpenseDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.muted}
+                style={s.input}
+                accessibilityLabel="Expense date"
+              />
 
-          <Text style={s.label}>Notes (optional)</Text>
-          <TextInput
-            testID="expense-notes"
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Add a note…"
-            placeholderTextColor={colors.muted}
-            style={[s.input, s.inputMultiline]}
-            multiline
-            numberOfLines={2}
-            accessibilityLabel="Notes"
-          />
+              <Text style={s.label}>Notes (optional)</Text>
+              <TextInput
+                testID="expense-notes"
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add a note…"
+                placeholderTextColor={colors.muted}
+                style={[s.input, s.inputMultiline]}
+                multiline
+                numberOfLines={2}
+                accessibilityLabel="Notes"
+              />
+            </>
+          ) : null}
 
           <Text style={s.label}>Paid by</Text>
           <ScrollView
@@ -1118,6 +1139,19 @@ const s = StyleSheet.create({
   },
   splitTitle: { fontSize: 11, fontWeight: "800", color: colors.ink },
   help: { fontSize: 11, color: colors.muted, marginTop: 2, lineHeight: 14 },
+  showMore: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    backgroundColor: colors.sage,
+    marginTop: 10,
+  },
+  showMoreText: { fontSize: 11, fontWeight: "700", color: colors.teal },
   errorBox: {
     flexDirection: "row",
     gap: 8,

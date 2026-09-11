@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "vercel-build": "next build",
     "start": "expo start",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
@@ -15,7 +16,7 @@
     "emulator": "./scripts/emulator.sh",
     "e2e": "./scripts/e2e.sh",
     "test:platform": "./scripts/test-platform.sh",
-    "maestro": "maestro test maestro/flows"
+    "maestro": "maestro test maestro/flows/regression-suite.yaml"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

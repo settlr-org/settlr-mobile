@@ -48,6 +48,7 @@ export default function Personal() {
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<PersonalExpense | null | undefined>();
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
     if (params.new === "1") setEditor(null);
@@ -152,43 +153,84 @@ export default function Personal() {
         </Card>
       </View>
 
-      <Button
-        label="Update budget"
-        secondary
-        icon="wallet"
-        onPress={() => setBudgetOpen(true)}
-      />
-
-      <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flexDirection: "row", gap: 8 }}>
         <View style={{ flex: 1 }}>
           <Button
-            label="Export CSV"
+            label="Update budget"
+            testID="personal-budget-open"
             secondary
-            icon="download"
+            icon="wallet"
+            onPress={() => setBudgetOpen(true)}
+          />
+        </View>
+        <Pressable
+          testID="personal-export-open"
+          onPress={() => setExportMenuOpen((v) => !v)}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.line,
+            backgroundColor: colors.paper,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          accessibilityLabel="Export"
+        >
+          <AntDesign name="ellipsis" size={16} color={colors.ink} />
+        </Pressable>
+      </View>
+      {exportMenuOpen ? (
+        <Card>
+          <Pressable
+            testID="personal-export-csv"
             onPress={async () => {
               const { shareApiFile } = await import("../../src/files");
               await shareApiFile(
                 "/api/v1/personal/export.csv",
                 "settlr-personal.csv",
               );
+              setExportMenuOpen(false);
             }}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            label="Export JSON"
-            secondary
-            icon="download"
+            style={{ paddingVertical: 10, flexDirection: "row", gap: 8 }}
+          >
+            <AntDesign name="file-text" size={14} color={colors.teal} />
+            <Text
+              style={{ color: colors.ink, fontSize: 12, fontWeight: "700" }}
+            >
+              Export CSV
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="personal-export-json"
             onPress={async () => {
               const { shareApiFile } = await import("../../src/files");
               await shareApiFile(
                 "/api/v1/personal/export.json",
                 "settlr-personal.json",
               );
+              setExportMenuOpen(false);
             }}
-          />
-        </View>
-      </View>
+            style={{
+              paddingVertical: 10,
+              flexDirection: "row",
+              gap: 8,
+              borderTopWidth: 1,
+              borderTopColor: colors.line,
+              marginTop: 8,
+              paddingTop: 12,
+            }}
+          >
+            <AntDesign name="file-text" size={14} color={colors.teal} />
+            <Text
+              style={{ color: colors.ink, fontSize: 12, fontWeight: "700" }}
+            >
+              Export JSON
+            </Text>
+          </Pressable>
+        </Card>
+      ) : null}
 
       <Card>
         <View style={local.sectionHead}>
@@ -198,6 +240,7 @@ export default function Personal() {
         {expenses.map((expense) => (
           <View key={expense.id} style={local.row}>
             <Pressable
+              testID={`personal-edit-${expense.id}`}
               style={local.rowMain}
               onPress={() => setEditor(expense)}
               accessibilityRole="button"
@@ -231,6 +274,7 @@ export default function Personal() {
             >
               {(open) => (
                 <Pressable
+                  testID={`personal-delete-${expense.id}`}
                   accessibilityLabel={`Delete ${expense.description}`}
                   onPress={open}
                   hitSlop={10}
@@ -510,7 +554,6 @@ function BudgetEditor({
       await apiFetch(`/api/v1/personal/budget?month=${month}`, {
         method: "PUT",
         body: JSON.stringify({
-          month,
           amount: cents,
           currency: budget?.currency || "NPR",
         }),
@@ -562,6 +605,7 @@ function BudgetEditor({
                 </View>
                 <Field
                   label="Budget amount"
+                  testID="personal-budget-amount"
                   value={amount}
                   onChangeText={(v) => {
                     setAmount(v.replace(/[^0-9.,]/g, ""));
@@ -584,6 +628,7 @@ function BudgetEditor({
                   />
                   <Button
                     label={busy ? "Saving…" : "Update budget"}
+                    testID="personal-budget-submit"
                     disabled={busy}
                     onPress={() => void save()}
                   />
@@ -611,7 +656,7 @@ function CategoryCreator({ onSaved }: { onSaved: () => Promise<void> }) {
         body: JSON.stringify({
           name: name.trim(),
           icon: "tag",
-          color: "#0B6B57",
+          color: colors.teal,
         }),
       });
       setName("");
@@ -629,6 +674,7 @@ function CategoryCreator({ onSaved }: { onSaved: () => Promise<void> }) {
       <View style={{ flex: 1 }}>
         <Field
           label="New category"
+          testID="personal-category-name"
           value={name}
           onChangeText={(v) => {
             setName(v);
@@ -644,6 +690,7 @@ function CategoryCreator({ onSaved }: { onSaved: () => Promise<void> }) {
       <View style={{ paddingBottom: 2 }}>
         <Button
           label={busy ? "…" : "Add"}
+          testID="personal-category-submit"
           secondary
           disabled={busy || !name.trim()}
           onPress={() => void create()}

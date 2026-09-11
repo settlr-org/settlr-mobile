@@ -1,0 +1,82 @@
+appId: com.settlr.app
+---
+# Group settings, recurring schedules, exports, and safe destructive actions.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "tab-groups"
+- extendedWaitUntil:
+    visible: "Maestro Group.*"
+    timeout: 10000
+- tapOn: "Maestro Group.*"
+- tapOn:
+    id: "group-manage"
+- extendedWaitUntil:
+    visible: "GROUP CONTROL ROOM"
+    timeout: 10000
+- tapOn:
+    id: "group-manage-description"
+- eraseText: 100
+- inputText: "Updated mobile group"
+- tapOn:
+    id: "group-manage-information"
+- inputText: "Settle by bank transfer"
+- hideKeyboard
+- tapOn:
+    id: "group-manage-submit"
+- extendedWaitUntil:
+    visible: "Group settings saved."
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      id: "recurring-submit"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "recurring-submit"
+- assertVisible: "Enter a description, amount, and payer."
+- tapOn:
+    id: "recurring-description"
+- inputText: "Maestro monthly rent"
+- tapOn:
+    id: "recurring-amount"
+- inputText: "40.00"
+- hideKeyboard
+- tapOn:
+    id: "recurring-submit"
+- extendedWaitUntil:
+    visible: "Maestro monthly rent"
+    timeout: 10000
+- tapOn: "Pause"
+- extendedWaitUntil:
+    visible: "Resume"
+    timeout: 10000
+- tapOn: "Resume"
+- extendedWaitUntil:
+    visible: "Pause"
+    timeout: 10000
+- tapOn: "Delete"
+- assertVisible: "Delete recurring expense?"
+- tapOn: "Delete schedule"
+- extendedWaitUntil:
+    notVisible: "Maestro monthly rent"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      text: "Archive group"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Archive group"
+- assertVisible: "Archive group?"
+- tapOn: "Cancel"
+- scrollUntilVisible:
+    element:
+      text: "Delete group"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Delete group"
+- assertVisible: "Delete group?"
+- tapOn: "Cancel"
+- assertVisible: "Delete group"

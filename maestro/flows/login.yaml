@@ -4,10 +4,28 @@ appId: com.settlr.app
 - launchApp:
     clearState: true
 - tapOn:
+    id: "auth-submit"
+- assertVisible: "Enter a valid email address."
+- tapOn:
     id: "auth-email"
-- inputText: "${MAESTRO_EMAIL}"
+- inputText: "invalid"
 - tapOn:
     id: "auth-password"
+- inputText: "short"
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
+- assertVisible: "Enter a valid email address."
+- tapOn:
+    id: "auth-email"
+- eraseText: 100
+- inputText: "${MAESTRO_EMAIL}"
+- tapOn:
+    id: "auth-submit"
+- assertVisible: "Password must be at least 8 characters."
+- tapOn:
+    id: "auth-password"
+- eraseText: 100
 - inputText: "${MAESTRO_PASSWORD}"
 - hideKeyboard
 - tapOn:

@@ -20,3 +20,4 @@ ios/
 .platform-test.log
 # Local Google Play service-account credential. Never commit this key.
 settlr-507105-16b0a352b6dd.json
+.vercel

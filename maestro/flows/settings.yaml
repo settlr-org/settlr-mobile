@@ -1,0 +1,85 @@
+appId: com.settlr.app
+---
+# Profile, notification preference persistence, payment details, security, and
+# destructive-action confirmation for the authenticated core fixture.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "tab-more"
+- tapOn:
+    id: "more-settings"
+- extendedWaitUntil:
+    visible: "Your account"
+    timeout: 10000
+- tapOn:
+    id: "settings-name"
+- eraseText: 100
+- inputText: "Maestro Core Updated"
+- hideKeyboard
+- tapOn:
+    id: "settings-profile-submit"
+- extendedWaitUntil:
+    visible: "Profile saved."
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "settings-notification-expense_enabled"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "settings-notification-expense_enabled"
+- tapOn:
+    id: "settings-notification-expense_enabled"
+
+- scrollUntilVisible:
+    element:
+      id: "settings-bank"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "settings-bank"
+- eraseText: 100
+- inputText: "Maestro Bank"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "settings-payment-handle"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "settings-payment-handle"
+- eraseText: 100
+- inputText: "maestro-core"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "settings-qr-url"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "settings-qr-url"
+- eraseText: 200
+- inputText: "https://example.com/maestro-qr.png"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "settings-payment-submit"
+    direction: DOWN
+    timeout: 5000
+- tapOn:
+    id: "settings-payment-submit"
+- extendedWaitUntil:
+    visible: "Payment details saved."
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      id: "settings-delete-account"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "settings-delete-account"
+- assertVisible: "Delete your account?"
+- tapOn: "Cancel"
+- assertVisible:
+    id: "settings-delete-account"

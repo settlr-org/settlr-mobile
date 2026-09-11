@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 import { apiFetch } from "../../../src/api";
 import { shareApiFile } from "../../../src/files";
+import { useSession } from "../../../src/session";
 import { colors } from "../../../src/theme";
 import {
   Button,
@@ -14,7 +15,13 @@ import {
   PageTitle,
   Screen,
 } from "../../../src/ui";
-import type { ActivityEvent, Friend, Group, Member } from "../../../src/types";
+import type {
+  ActivityEvent,
+  Category,
+  Friend,
+  Group,
+  Member,
+} from "../../../src/types";
 import { labelize, money } from "../../../src/types";
 
 type Recurring = {
@@ -35,9 +42,11 @@ type Stats = {
 
 export default function GroupManage() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useSession();
   const [group, setGroup] = useState<Group>();
   const [members, setMembers] = useState<Member[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [stats, setStats] = useState<Stats>();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
@@ -50,13 +59,16 @@ export default function GroupManage() {
   const [friendId, setFriendId] = useState("");
   const [inviteFriendId, setInviteFriendId] = useState("");
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+  const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
     try {
-      const [g, m, f, r, report, activity] = await Promise.all([
+      const [g, m, f, c, r, report, activity] = await Promise.all([
         apiFetch<Group>(`/api/v1/groups/${id}`),
         apiFetch<{ data: Member[] }>(`/api/v1/groups/${id}/members`),
         apiFetch<{ data: Friend[] }>("/api/v1/friends"),
+        apiFetch<{ data: Category[] }>("/api/v1/categories"),
         apiFetch<{ data: Recurring[] }>(`/api/v1/groups/${id}/recurring`),
         apiFetch<Stats>(`/api/v1/groups/${id}/stats?range=all`),
         apiFetch<{ data: ActivityEvent[] }>(
@@ -66,6 +78,7 @@ export default function GroupManage() {
       setGroup(g);
       setMembers(m.data);
       setFriends(f.data);
+      setCategories(c.data);
       setRecurring(r.data);
       setStats(report);
       setEvents(activity.data);
@@ -101,6 +114,8 @@ export default function GroupManage() {
     }, [load]),
   );
   const save = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
       await apiFetch(`/api/v1/groups/${id}`, {
         method: "PATCH",
@@ -114,36 +129,48 @@ export default function GroupManage() {
         }),
       });
       await load();
+      setSaved("Group settings saved.");
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not save group.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   const sendInvite = async () => {
+    if (!inviteFriendId || busy) return;
+    setBusy(true);
     try {
       await apiFetch(`/api/v1/groups/${id}/invites`, {
         method: "POST",
         body: JSON.stringify({ user_id: inviteFriendId }),
       });
+      setSaved("Group invitation sent.");
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not send invitation.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   const addFriend = async () => {
-    if (!friendId) return;
+    if (!friendId || busy) return;
+    setBusy(true);
     try {
       await apiFetch(`/api/v1/groups/${id}/members`, {
         method: "POST",
         body: JSON.stringify({ user_id: friendId }),
       });
       await load();
+      setSaved("Friend added to the group.");
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Could not add this friend.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   const updateRecurring = async (item: Recurring, active: boolean) => {
@@ -165,6 +192,8 @@ export default function GroupManage() {
         <Loading />
       </Screen>
     );
+  const myRole = members.find((member) => member.id === user?.id)?.role;
+  const admin = myRole === "OWNER" || myRole === "ADMIN";
   return (
     <Screen>
       <PageTitle
@@ -173,42 +202,73 @@ export default function GroupManage() {
         description="Manage this shared ledger."
       />
       {error ? <ErrorNotice message={error} retry={() => void load()} /> : null}
+      {saved ? (
+        <Text style={s.saved} accessibilityRole="alert">
+          {saved}
+        </Text>
+      ) : null}
       <Card>
         <Text style={s.section}>Group details</Text>
-        <Field label="Name" value={name} onChangeText={setName} />
+        <Field
+          label="Name"
+          testID="group-manage-name"
+          value={name}
+          onChangeText={setName}
+          editable={admin}
+        />
         <Field
           label="Description"
+          testID="group-manage-description"
           value={description}
           onChangeText={setDescription}
+          editable={admin}
         />
         <Field
           label="Group information"
+          testID="group-manage-information"
           value={information}
           onChangeText={setInformation}
           multiline
           placeholder="Optional details for members"
+          editable={admin}
         />
         <Field
           label="Type"
+          testID="group-manage-type"
           value={type}
           onChangeText={setType}
           autoCapitalize="characters"
+          editable={admin}
         />
         <Field
           label="Currency"
+          testID="group-manage-currency"
           value={currency}
           onChangeText={setCurrency}
           autoCapitalize="characters"
+          editable={admin}
         />
         <View style={s.row}>
           <Text style={[s.item, { flex: 1 }]}>Simplify repayments</Text>
           <Switch
             value={simplify}
             onValueChange={setSimplify}
+            disabled={!admin}
             trackColor={{ true: colors.teal }}
           />
         </View>
-        <Button label="Save group settings" onPress={() => void save()} />
+        {admin ? (
+          <Button
+            testID="group-manage-submit"
+            label={busy ? "Saving…" : "Save group settings"}
+            disabled={busy}
+            onPress={() => void save()}
+          />
+        ) : (
+          <Text style={s.meta}>
+            Only group admins can change ledger settings.
+          </Text>
+        )}
       </Card>
       <Card>
         <Text style={s.section}>Add an accepted friend</Text>
@@ -231,7 +291,11 @@ export default function GroupManage() {
                   />
                 ))}
             </View>
-            <Button label="Add to group" onPress={() => void addFriend()} />
+            <Button
+              label={busy ? "Adding…" : "Add to group"}
+              disabled={busy}
+              onPress={() => void addFriend()}
+            />
           </>
         ) : (
           <Text style={s.meta}>All of your friends are already members.</Text>
@@ -260,7 +324,7 @@ export default function GroupManage() {
         <Button
           label="Send invitation"
           secondary
-          disabled={!inviteFriendId}
+          disabled={!inviteFriendId || busy}
           onPress={() => void sendInvite()}
         />
       </Card>
@@ -272,24 +336,43 @@ export default function GroupManage() {
               <Text style={s.item}>{member.name}</Text>
               <Text style={s.meta}>{member.role}</Text>
             </View>
-            <Button
-              label={member.role === "ADMIN" ? "Make member" : "Make admin"}
-              secondary
-              onPress={() =>
-                void apiFetch(`/api/v1/groups/${id}/members/${member.id}`, {
-                  method: "PATCH",
-                  body: JSON.stringify({
-                    role: member.role === "ADMIN" ? "MEMBER" : "ADMIN",
-                  }),
-                }).then(load)
-              }
-            />
+            {admin && member.id !== user?.id && member.role !== "OWNER" ? (
+              <View style={s.memberActions}>
+                <Button
+                  label={member.role === "ADMIN" ? "Make member" : "Make admin"}
+                  secondary
+                  onPress={() =>
+                    void apiFetch(`/api/v1/groups/${id}/members/${member.id}`, {
+                      method: "PATCH",
+                      body: JSON.stringify({
+                        role: member.role === "ADMIN" ? "MEMBER" : "ADMIN",
+                      }),
+                    }).then(load)
+                  }
+                />
+                <ConfirmAction
+                  title={`Remove ${member.name}?`}
+                  description="They will no longer have access to this group."
+                  label="Remove member"
+                  onConfirm={async () => {
+                    await apiFetch(
+                      `/api/v1/groups/${id}/members/${member.id}`,
+                      { method: "DELETE" },
+                    );
+                    await load();
+                  }}
+                >
+                  {(open) => <Button label="Remove" danger onPress={open} />}
+                </ConfirmAction>
+              </View>
+            ) : null}
           </View>
         ))}
       </Card>
       <RecurringPanel
         group={group}
         members={members}
+        categories={categories}
         recurring={recurring}
         onSaved={load}
         onToggle={updateRecurring}
@@ -374,36 +457,46 @@ export default function GroupManage() {
         ) : null}
       </Card>
       <Card>
-        <Button
-          label="Leave group"
-          danger
-          onPress={() =>
-            void apiFetch(`/api/v1/groups/${id}/leave`, {
-              method: "POST",
-            }).then(() => router.replace("/(tabs)/groups"))
-          }
-        />
-        <ConfirmAction
-          title="Archive group?"
-          description="The group will no longer be active."
-          label="Archive"
-          onConfirm={async () => {
-            await apiFetch(`/api/v1/groups/${id}/archive`, { method: "POST" });
-            router.replace("/(tabs)/groups");
-          }}
-        >
-          {(open) => <Button label="Archive group" danger onPress={open} />}
-        </ConfirmAction>
-        <ConfirmAction
-          title="Delete group?"
-          description="This permanently removes the group."
-          onConfirm={async () => {
-            await apiFetch(`/api/v1/groups/${id}`, { method: "DELETE" });
-            router.replace("/(tabs)/groups");
-          }}
-        >
-          {(open) => <Button label="Delete group" danger onPress={open} />}
-        </ConfirmAction>
+        {myRole !== "OWNER" ? (
+          <ConfirmAction
+            title="Leave group?"
+            description="You will lose access to this ledger. Existing financial records remain intact."
+            label="Leave group"
+            onConfirm={async () => {
+              await apiFetch(`/api/v1/groups/${id}/leave`, { method: "POST" });
+              router.replace("/(tabs)/groups");
+            }}
+          >
+            {(open) => <Button label="Leave group" danger onPress={open} />}
+          </ConfirmAction>
+        ) : null}
+        {admin ? (
+          <>
+            <ConfirmAction
+              title="Archive group?"
+              description="The group will no longer be active."
+              label="Archive"
+              onConfirm={async () => {
+                await apiFetch(`/api/v1/groups/${id}/archive`, {
+                  method: "POST",
+                });
+                router.replace("/(tabs)/groups");
+              }}
+            >
+              {(open) => <Button label="Archive group" danger onPress={open} />}
+            </ConfirmAction>
+            <ConfirmAction
+              title="Delete group?"
+              description="This permanently removes the group."
+              onConfirm={async () => {
+                await apiFetch(`/api/v1/groups/${id}`, { method: "DELETE" });
+                router.replace("/(tabs)/groups");
+              }}
+            >
+              {(open) => <Button label="Delete group" danger onPress={open} />}
+            </ConfirmAction>
+          </>
+        ) : null}
       </Card>
     </Screen>
   );
@@ -412,12 +505,14 @@ export default function GroupManage() {
 function RecurringPanel({
   group,
   members,
+  categories,
   recurring,
   onSaved,
   onToggle,
 }: {
   group: Group;
   members: Member[];
+  categories: Category[];
   recurring: Recurring[];
   onSaved: () => Promise<void>;
   onToggle: (item: Recurring, active: boolean) => Promise<void>;
@@ -426,8 +521,12 @@ function RecurringPanel({
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState("MONTHLY");
   const [paidBy, setPaidBy] = useState(members[0]?.id || "");
+  const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
+  const [newCategoryName, setNewCategoryName] = useState("Recurring");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const create = async () => {
+    if (busy) return;
     const cents = Math.round(Number(amount) * 100);
     if (
       !description.trim() ||
@@ -438,7 +537,25 @@ function RecurringPanel({
       setError("Enter a description, amount, and payer.");
       return;
     }
+    if (!categoryId && !newCategoryName.trim()) {
+      setError("Choose a category or enter a category name.");
+      return;
+    }
+    setBusy(true);
     try {
+      let selectedCategoryId = categoryId;
+      if (!selectedCategoryId) {
+        const category = await apiFetch<Category>("/api/v1/categories", {
+          method: "POST",
+          body: JSON.stringify({
+            name: newCategoryName.trim(),
+            icon: "repeat",
+            color: colors.teal,
+          }),
+        });
+        selectedCategoryId = category.id;
+        setCategoryId(category.id);
+      }
       await apiFetch(`/api/v1/groups/${group.id}/recurring`, {
         method: "POST",
         body: JSON.stringify({
@@ -446,6 +563,7 @@ function RecurringPanel({
           amount: cents,
           currency: group.currency,
           paid_by: paidBy,
+          category_id: selectedCategoryId,
           frequency,
           start_date: new Date().toISOString().slice(0, 10),
           split_mode: "EQUAL",
@@ -461,6 +579,8 @@ function RecurringPanel({
           ? cause.message
           : "Could not create recurring expense.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   const remove = async (item: Recurring) => {
@@ -478,12 +598,14 @@ function RecurringPanel({
       <Text style={s.section}>Recurring expenses</Text>
       <Field
         label="Description"
+        testID="recurring-description"
         value={description}
         onChangeText={setDescription}
         placeholder="Monthly rent"
       />
       <Field
         label={`Amount (${group.currency})`}
+        testID="recurring-amount"
         value={amount}
         onChangeText={setAmount}
         keyboardType="decimal-pad"
@@ -511,7 +633,38 @@ function RecurringPanel({
           />
         ))}
       </View>
-      <Button label="Create schedule" onPress={() => void create()} />
+      <Text style={s.label}>Category</Text>
+      {categories.length ? (
+        <View style={s.friendChoices}>
+          {categories.map((category) => (
+            <Button
+              key={category.id}
+              label={category.name}
+              secondary={categoryId !== category.id}
+              onPress={() => setCategoryId(category.id)}
+            />
+          ))}
+        </View>
+      ) : (
+        <>
+          <Text style={s.meta}>
+            Your first recurring schedule will create this category.
+          </Text>
+          <Field
+            label="Category name"
+            testID="recurring-category-name"
+            value={newCategoryName}
+            onChangeText={setNewCategoryName}
+            maxLength={50}
+          />
+        </>
+      )}
+      <Button
+        testID="recurring-submit"
+        label={busy ? "Creating…" : "Create schedule"}
+        disabled={busy}
+        onPress={() => void create()}
+      />
       {error ? <ErrorNotice message={error} /> : null}
       {recurring.map((item) => (
         <View style={s.row} key={item.id}>
@@ -564,6 +717,12 @@ const s = StyleSheet.create({
   meta: { color: colors.muted, fontSize: 10 },
   label: { color: colors.ink, fontSize: 11, fontWeight: "800" },
   friendChoices: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  memberActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 6,
+  },
   stats: { flexDirection: "row", gap: 8 },
   metricLabel: {
     color: colors.muted,
@@ -573,5 +732,15 @@ const s = StyleSheet.create({
   },
   metric: { color: colors.teal, fontSize: 13, fontWeight: "800", marginTop: 4 },
   reportAmount: { color: colors.teal, fontSize: 11, fontWeight: "800" },
+  saved: {
+    color: colors.positive,
+    backgroundColor: colors.sage,
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   exportRow: { flexDirection: "row", gap: 8 },
 });

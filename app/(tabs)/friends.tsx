@@ -210,14 +210,24 @@ export default function Friends() {
               <Text style={s.panelTitle}>Search results</Text>
               {results.map((u) => (
                 <View style={s.memberLine} key={u.id}>
-                  <View style={s.avatarSoft}>
-                    <Text style={s.avatarSoftText}>{initials(u.name)}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.cardTitle}>{u.name}</Text>
-                    <Text style={s.muted}>{u.email || "Settlr member"}</Text>
-                  </View>
                   <Pressable
+                    testID={`friend-result-${u.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${u.name}`}
+                    onPress={() => router.push(`/friends/${u.id}`)}
+                    style={s.resultIdentity}
+                  >
+                    <View style={s.avatarSoft}>
+                      <Text style={s.avatarSoftText}>{initials(u.name)}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.cardTitle}>{u.name}</Text>
+                      <Text style={s.muted}>{u.email || "Settlr member"}</Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    testID={`friend-result-add-${u.id}`}
+                    accessibilityLabel={`Add ${u.name}`}
                     style={s.addBtn}
                     onPress={() => void act(`/api/v1/friends/${u.id}/request`)}
                   >
@@ -402,6 +412,13 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: colors.line,
+  },
+  resultIdentity: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   avatarSoft: {
     width: 38,

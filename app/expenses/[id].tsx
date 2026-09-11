@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { apiFetch, apiUpload } from "../../src/api";
 import { pickAttachment, shareApiFile } from "../../src/files";
+import { useSession } from "../../src/session";
 import { colors } from "../../src/theme";
 import {
   Button,
@@ -39,6 +40,7 @@ import { money } from "../../src/types";
 
 export default function ExpenseDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useSession();
   const [expense, setExpense] = useState<Expense>();
   const [group, setGroup] = useState<Group>();
   const [members, setMembers] = useState<Member[]>([]);
@@ -117,6 +119,7 @@ export default function ExpenseDetail() {
         })} · ${expense.split_mode === "EQUAL" ? "Equal split" : expense.split_mode} · ${expense.currency}`}
         action={
           <Pressable
+            testID="expense-edit"
             style={s.icon}
             onPress={() => setEditing(true)}
             accessibilityRole="button"
@@ -187,7 +190,12 @@ export default function ExpenseDetail() {
         </View>
       </Card>
 
-      <Comments expenseId={id} comments={comments} onSaved={load} />
+      <Comments
+        expenseId={id}
+        comments={comments}
+        userId={user?.id}
+        onSaved={load}
+      />
       <Attachments expenseId={id} attachments={attachments} onSaved={load} />
 
       <ConfirmAction
@@ -198,7 +206,14 @@ export default function ExpenseDetail() {
           router.replace(`/groups/${group.id}`);
         }}
       >
-        {(open) => <Button label="Delete expense" danger onPress={open} />}
+        {(open) => (
+          <Button
+            testID="expense-delete"
+            label="Delete expense"
+            danger
+            onPress={open}
+          />
+        )}
       </ConfirmAction>
 
       {editing ? (
@@ -334,12 +349,14 @@ function Editor({
 
               <Field
                 label="Description *"
+                testID="expense-edit-description"
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Description"
               />
               <Field
                 label="Amount *"
+                testID="expense-edit-amount"
                 value={amount}
                 onChangeText={(v) => setAmount(v.replace(/[^0-9.,]/g, ""))}
                 keyboardType="decimal-pad"
@@ -442,6 +459,7 @@ function Editor({
                 />
                 <Button
                   label={busy ? "Saving…" : "Save changes"}
+                  testID="expense-edit-submit"
                   disabled={busy}
                   onPress={() => void save()}
                 />
@@ -457,10 +475,12 @@ function Editor({
 function Comments({
   expenseId,
   comments,
+  userId,
   onSaved,
 }: {
   expenseId: string;
   comments: Comment[];
+  userId?: string;
   onSaved: () => Promise<void>;
 }) {
   const [body, setBody] = useState("");
@@ -509,6 +529,32 @@ function Comments({
               {new Date(c.created_at).toLocaleDateString()}
             </Text>
           </View>
+          {c.user_id === userId ? (
+            <ConfirmAction
+              title="Delete comment?"
+              description="This comment will be permanently removed."
+              label="Delete comment"
+              onConfirm={async () => {
+                await apiFetch(`/api/v1/comments/${c.id}`, {
+                  method: "DELETE",
+                });
+                await onSaved();
+              }}
+            >
+              {(open) => (
+                <Pressable
+                  testID={`comment-delete-${c.id}`}
+                  onPress={open}
+                  hitSlop={10}
+                  style={s.deleteSm}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete comment"
+                >
+                  <AntDesign name="delete" size={15} color={colors.coral} />
+                </Pressable>
+              )}
+            </ConfirmAction>
+          ) : null}
         </View>
       ))}
       {!comments.length ? (
@@ -518,6 +564,7 @@ function Comments({
       ) : null}
       <Field
         label="Add a comment"
+        testID="comment-body"
         value={body}
         onChangeText={setBody}
         placeholder="Write a comment…"
@@ -526,6 +573,7 @@ function Comments({
       <Button
         label={busy ? "Posting…" : "Post comment"}
         secondary
+        testID="comment-submit"
         disabled={busy || !body.trim()}
         onPress={() => void add()}
       />
@@ -631,6 +679,7 @@ function Attachments({
       ) : null}
       <View style={s.upload}>
         <Pressable
+          testID="attachment-photo"
           style={[s.uploadBtn, busy === "photo" && s.uploadBtnDisabled]}
           onPress={() => void upload("photo")}
           disabled={!!busy}
@@ -644,6 +693,7 @@ function Attachments({
           <Text style={s.uploadText}>Photo</Text>
         </Pressable>
         <Pressable
+          testID="attachment-document"
           style={[s.uploadBtn, busy === "document" && s.uploadBtnDisabled]}
           onPress={() => void upload("document")}
           disabled={!!busy}

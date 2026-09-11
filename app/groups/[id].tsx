@@ -59,6 +59,7 @@ export default function GroupDetail() {
   const [error, setError] = useState("");
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const [editingSettlement, setEditingSettlement] = useState<Settlement>();
   const [memberOpen, setMemberOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
@@ -220,6 +221,7 @@ export default function GroupDetail() {
             <Button
               label="Add expense"
               icon="plus"
+              testID="group-expense-create"
               onPress={() => setExpenseOpen(true)}
             />
             <Field
@@ -403,7 +405,10 @@ export default function GroupDetail() {
               <Button
                 label="Record settlement"
                 icon="swap"
-                onPress={() => setSettlementOpen(true)}
+                onPress={() => {
+                  setEditingSettlement(undefined);
+                  setSettlementOpen(true);
+                }}
               />
             )}
           </Card>
@@ -451,7 +456,11 @@ export default function GroupDetail() {
             <Button
               label="Settle up"
               secondary
-              onPress={() => setSettlementOpen(true)}
+              testID="settlement-create"
+              onPress={() => {
+                setEditingSettlement(undefined);
+                setSettlementOpen(true);
+              }}
             />
           </View>
           {settlements.map((settlement) => (
@@ -469,6 +478,43 @@ export default function GroupDetail() {
               <Text style={s.amount}>
                 {money(settlement.amount, settlement.currency)}
               </Text>
+              <Pressable
+                testID={`settlement-edit-${settlement.id}`}
+                onPress={() => {
+                  setEditingSettlement(settlement);
+                  setSettlementOpen(true);
+                }}
+                hitSlop={8}
+                style={s.rowAction}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit settlement ${money(settlement.amount, settlement.currency)}`}
+              >
+                <AntDesign name="edit" size={15} color={colors.teal} />
+              </Pressable>
+              <ConfirmAction
+                title="Delete settlement?"
+                description="This settlement will be permanently removed and balances will be recalculated."
+                label="Delete settlement"
+                onConfirm={async () => {
+                  await apiFetch(`/api/v1/settlements/${settlement.id}`, {
+                    method: "DELETE",
+                  });
+                  await load();
+                }}
+              >
+                {(open) => (
+                  <Pressable
+                    testID={`settlement-delete-${settlement.id}`}
+                    onPress={open}
+                    hitSlop={8}
+                    style={s.rowAction}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete settlement ${money(settlement.amount, settlement.currency)}`}
+                  >
+                    <AntDesign name="delete" size={15} color={colors.coral} />
+                  </Pressable>
+                )}
+              </ConfirmAction>
             </View>
           ))}
           {!settlements.length ? (
@@ -493,8 +539,10 @@ export default function GroupDetail() {
       {settlementOpen ? (
         <SettlementComposer
           group={group}
+          members={members}
           debts={debts}
           names={names}
+          settlement={editingSettlement}
           onClose={() => setSettlementOpen(false)}
           onSaved={load}
         />
@@ -659,6 +707,7 @@ function ExpenseComposer({
 
               <Field
                 label="Description *"
+                testID="group-expense-description"
                 value={description}
                 onChangeText={(v) => {
                   setDescription(v);
@@ -668,6 +717,7 @@ function ExpenseComposer({
               />
               <Field
                 label={`Amount (${group.currency}) *`}
+                testID="group-expense-amount"
                 value={amount}
                 onChangeText={(v) => {
                   setAmount(v.replace(/[^0-9.,]/g, ""));
@@ -692,11 +742,12 @@ function ExpenseComposer({
 
               <Text style={s.label}>Paid by</Text>
               <View style={s.chips}>
-                {members.map((m) => {
+                {members.map((m, index) => {
                   const active = payer === m.id;
                   return (
                     <Pressable
                       key={m.id}
+                      testID={`group-expense-payer-${index}`}
                       onPress={() => setPayer(m.id)}
                       style={[s.chip, active && s.chipActive]}
                       accessibilityRole="radio"
@@ -722,6 +773,7 @@ function ExpenseComposer({
                     return (
                       <Pressable
                         key={item}
+                        testID={`group-expense-split-${item.toLowerCase()}`}
                         onPress={() => !disabled && setMode(item)}
                         disabled={disabled}
                         style={[
@@ -761,7 +813,7 @@ function ExpenseComposer({
                 </Text>
               )}
 
-              {members.map((member) => {
+              {members.map((member, index) => {
                 const isSelected = selected.includes(member.id);
                 return (
                   <View style={s.participant} key={member.id}>
@@ -775,7 +827,9 @@ function ExpenseComposer({
                       }
                       hitSlop={6}
                       style={s.checkHit}
+                      testID={`group-expense-participant-${index}`}
                       accessibilityRole="checkbox"
+                      accessibilityLabel={`Include ${member.name}`}
                       accessibilityState={{ checked: isSelected }}
                     >
                       <View
@@ -796,6 +850,7 @@ function ExpenseComposer({
                     {mode !== "EQUAL" ? (
                       <View style={{ flex: 1, maxWidth: 140 }}>
                         <Field
+                          testID={`group-expense-split-value-${index}`}
                           label={
                             mode === "EXACT"
                               ? "Amount"
@@ -836,6 +891,7 @@ function ExpenseComposer({
                 />
                 <Button
                   label={busy ? "Saving…" : "Save expense"}
+                  testID="group-expense-submit"
                   disabled={busy}
                   onPress={() => void save()}
                 />
@@ -850,22 +906,39 @@ function ExpenseComposer({
 
 function SettlementComposer({
   group,
+  members,
   debts,
   names,
+  settlement,
   onClose,
   onSaved,
 }: {
   group: Group;
+  members: Member[];
   debts: Debt[];
   names: Record<string, string>;
+  settlement?: Settlement;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const first = debts[0];
-  const [from, setFrom] = useState(first?.from_user || "");
-  const [to, setTo] = useState(first?.to_user || "");
-  const [amount, setAmount] = useState(first ? String(first.amount / 100) : "");
-  const [note, setNote] = useState("");
+  const [from, setFrom] = useState(
+    settlement?.from_user || first?.from_user || members[0]?.id || "",
+  );
+  const [to, setTo] = useState(
+    settlement?.to_user ||
+      first?.to_user ||
+      members.find((member) => member.id !== members[0]?.id)?.id ||
+      "",
+  );
+  const [amount, setAmount] = useState(
+    settlement
+      ? String(settlement.amount / 100)
+      : first
+        ? String(first.amount / 100)
+        : "",
+  );
+  const [note, setNote] = useState(settlement?.note || "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -883,17 +956,26 @@ function SettlementComposer({
     }
     setBusy(true);
     try {
-      await apiFetch(`/api/v1/groups/${group.id}/settlements`, {
-        method: "POST",
-        body: JSON.stringify({
-          from_user: from,
-          to_user: to,
-          amount: cents,
-          currency: group.currency,
-          note,
-          settled_at: new Date().toISOString().slice(0, 10),
-        }),
-      });
+      await apiFetch(
+        settlement
+          ? `/api/v1/settlements/${settlement.id}`
+          : `/api/v1/groups/${group.id}/settlements`,
+        {
+          method: settlement ? "PATCH" : "POST",
+          body: JSON.stringify(
+            settlement
+              ? { amount: cents, note }
+              : {
+                  from_user: from,
+                  to_user: to,
+                  amount: cents,
+                  currency: group.currency,
+                  note,
+                  settled_at: new Date().toISOString().slice(0, 10),
+                },
+          ),
+        },
+      );
       await onSaved();
       onClose();
     } catch (cause) {
@@ -931,7 +1013,9 @@ function SettlementComposer({
             <View style={{ width: "100%", maxWidth: 520, alignSelf: "center" }}>
               <Card>
                 <View style={s.sheetHead}>
-                  <Text style={s.sheetTitle}>Record settlement</Text>
+                  <Text style={s.sheetTitle}>
+                    {settlement ? "Edit settlement" : "Record settlement"}
+                  </Text>
                   <Pressable
                     onPress={onClose}
                     hitSlop={10}
@@ -960,6 +1044,77 @@ function SettlementComposer({
                     </Text>
                   </View>
                 ) : null}
+
+                <View style={{ gap: 6 }}>
+                  <Text style={s.label}>Who paid?</Text>
+                  <View style={s.chips}>
+                    {members.map((member) => {
+                      const active = from === member.id;
+                      return (
+                        <Pressable
+                          key={member.id}
+                          testID={`settlement-from-${member.id}`}
+                          disabled={Boolean(settlement)}
+                          onPress={() => {
+                            setFrom(member.id);
+                            setError("");
+                          }}
+                          style={[
+                            s.chip,
+                            active && s.chipActive,
+                            settlement && !active && s.chipDisabled,
+                          ]}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            selected: active,
+                            disabled: Boolean(settlement),
+                          }}
+                        >
+                          <Text
+                            style={[s.chipText, active && s.chipTextActive]}
+                          >
+                            {member.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+                <View style={{ gap: 6 }}>
+                  <Text style={s.label}>Who received it?</Text>
+                  <View style={s.chips}>
+                    {members.map((member) => {
+                      const active = to === member.id;
+                      return (
+                        <Pressable
+                          key={member.id}
+                          testID={`settlement-to-${member.id}`}
+                          disabled={Boolean(settlement)}
+                          onPress={() => {
+                            setTo(member.id);
+                            setError("");
+                          }}
+                          style={[
+                            s.chip,
+                            active && s.chipActive,
+                            settlement && !active && s.chipDisabled,
+                          ]}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            selected: active,
+                            disabled: Boolean(settlement),
+                          }}
+                        >
+                          <Text
+                            style={[s.chipText, active && s.chipTextActive]}
+                          >
+                            {member.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
 
                 {debts.length ? (
                   <View style={{ gap: 6 }}>
@@ -1007,12 +1162,14 @@ function SettlementComposer({
                   }}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
+                  testID="settlement-amount"
                 />
                 <Field
                   label="Note (optional)"
                   value={note}
                   onChangeText={setNote}
                   placeholder="Cash, transfer, etc."
+                  testID="settlement-note"
                 />
 
                 {error ? <ErrorNotice message={error} /> : null}
@@ -1024,7 +1181,14 @@ function SettlementComposer({
                     disabled={busy}
                   />
                   <Button
-                    label={busy ? "Saving…" : "Save settlement"}
+                    label={
+                      busy
+                        ? "Saving…"
+                        : settlement
+                          ? "Save settlement"
+                          : "Record settlement"
+                    }
+                    testID="settlement-submit"
                     disabled={busy}
                     onPress={() => void save()}
                   />
@@ -1155,7 +1319,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  summary: { flexDirection: "row", gap: 10 },
+  summary: { flexDirection: "row", gap: 8 },
   metricCard: { flex: 1, gap: 4 },
   metricCardNegative: { borderColor: colors.dangerBorder },
   metricLabel: {
@@ -1167,10 +1331,10 @@ const s = StyleSheet.create({
   },
   metric: {
     color: colors.ink,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
     marginTop: 4,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   metricPositive: { color: colors.teal },
   metricNegative: { color: colors.coral },
@@ -1180,9 +1344,9 @@ const s = StyleSheet.create({
     lineHeight: 13,
     marginTop: 2,
   },
-  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tab: {
-    minHeight: 36,
+    minHeight: 32,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -1225,6 +1389,14 @@ const s = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  rowAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   section: {
     color: colors.ink,
@@ -1286,6 +1458,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   chipActive: { backgroundColor: colors.teal, borderColor: colors.teal },
+  chipDisabled: { opacity: 0.48 },
   chipText: { color: colors.ink, fontSize: 11, fontWeight: "700" },
   chipTextActive: { color: colors.white },
   participant: {

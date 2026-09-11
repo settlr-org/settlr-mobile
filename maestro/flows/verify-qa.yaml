@@ -10,12 +10,12 @@ appId: com.settlr.app
     id: "auth-email"
     point: "99%,50%"
 - eraseText: 100
-- inputText: "screenshots@test.local"
+- inputText: "${MAESTRO_EMAIL}"
 - tapOn:
     id: "auth-password"
     point: "99%,50%"
 - eraseText: 100
-- inputText: "Test123!Test123!"
+- inputText: "${MAESTRO_PASSWORD}"
 - tapOn:
     id: "auth-submit"
 - extendedWaitUntil:

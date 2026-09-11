@@ -46,6 +46,8 @@ export const colors = {
   warningBg: "#FFF3D9",
   altGoldBg: "#f8ead4",
   backdrop: "rgba(8,20,16,.55)",
+  onPrimaryMuted: "rgba(255,255,255,0.92)",
+  onPrimaryBorder: "rgba(255,255,255,0.12)",
 } as const;
 
 export const radii = {

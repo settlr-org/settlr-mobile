@@ -3,11 +3,16 @@ appId: com.settlr.app
 # Keep dependent journeys in a deliberate order. `maestro test <directory>`
 # discovers files alphabetically, which makes the create-group prerequisite
 # flaky and masks regressions with unrelated fixture state.
+- runFlow: auth.yaml
+- runFlow: auth-recovery.yaml
 - runFlow: login.yaml
 - runFlow: empty-shared-expense.yaml
 - runFlow: groups.yaml
 - runFlow: expense-equal.yaml
+- runFlow: group-management.yaml
 - runFlow: keyboard-safe-forms.yaml
 - runFlow: personal.yaml
 - runFlow: friends.yaml
 - runFlow: deep-link.yaml
+- runFlow: advanced-financial.yaml
+- runFlow: settings.yaml
