@@ -21,6 +21,8 @@ export default function PasswordSettings() {
   const { user, refresh } = useSession();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  const [currentVisible, setCurrentVisible] = useState(false);
+  const [nextVisible, setNextVisible] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,27 +76,41 @@ export default function PasswordSettings() {
           </Text>
           <View style={s.card}>
             {!settingPassword && (
-              <TextInput
-                value={current}
-                onChangeText={setCurrent}
-                placeholder="Current password"
-                placeholderTextColor={colors.muted}
-                style={s.input}
-                secureTextEntry
-                autoComplete="current-password"
-                accessibilityLabel="Current password"
-              />
+              <View style={s.passwordField}>
+                <TextInput
+                  value={current}
+                  onChangeText={setCurrent}
+                  placeholder="Current password"
+                  placeholderTextColor={colors.muted}
+                  style={[s.input, s.passwordInput]}
+                  secureTextEntry={!currentVisible}
+                  autoComplete="current-password"
+                  accessibilityLabel="Current password"
+                />
+                <PasswordVisibilityToggle
+                  visible={currentVisible}
+                  onPress={() => setCurrentVisible((visible) => !visible)}
+                  testID="current-password-visibility-toggle"
+                />
+              </View>
             )}
-            <TextInput
-              value={next}
-              onChangeText={setNext}
-              placeholder="New password (at least 8 characters)"
-              placeholderTextColor={colors.muted}
-              style={s.input}
-              secureTextEntry
-              autoComplete="new-password"
-              accessibilityLabel="New password"
-            />
+            <View style={s.passwordField}>
+              <TextInput
+                value={next}
+                onChangeText={setNext}
+                placeholder="New password (at least 8 characters)"
+                placeholderTextColor={colors.muted}
+                style={[s.input, s.passwordInput]}
+                secureTextEntry={!nextVisible}
+                autoComplete="new-password"
+                accessibilityLabel="New password"
+              />
+              <PasswordVisibilityToggle
+                visible={nextVisible}
+                onPress={() => setNextVisible((visible) => !visible)}
+                testID="new-password-visibility-toggle"
+              />
+            </View>
             {error ? <Text style={s.error}>{error}</Text> : null}
             {message ? <Text style={s.success}>{message}</Text> : null}
             <Pressable
@@ -116,6 +132,34 @@ export default function PasswordSettings() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function PasswordVisibilityToggle({
+  visible,
+  onPress,
+  testID,
+}: {
+  visible: boolean;
+  onPress: () => void;
+  testID: string;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={visible ? "Hide password" : "Show password"}
+      accessibilityState={{ selected: visible }}
+      hitSlop={8}
+      style={s.passwordToggle}
+      onPress={onPress}
+    >
+      <AntDesign
+        name={visible ? "eye-invisible" : "eye"}
+        size={19}
+        color={colors.muted}
+      />
+    </Pressable>
   );
 }
 
@@ -164,6 +208,17 @@ const s = StyleSheet.create({
     padding: 15,
     color: colors.ink,
     marginBottom: 11,
+  },
+  passwordField: { position: "relative", marginBottom: 11 },
+  passwordInput: { marginBottom: 0, paddingRight: 50 },
+  passwordToggle: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 50,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   button: {
     backgroundColor: colors.teal,

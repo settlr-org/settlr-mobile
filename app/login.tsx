@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -25,6 +26,7 @@ export default function Login() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState("");
   const [verificationEmail, setVerificationEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -94,9 +96,11 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={s.center}
       >
-        <View style={s.logo}>
-          <AntDesign name="wallet" size={25} color={colors.white} />
-        </View>
+        <Image
+          source={require("../assets/icon.png")}
+          style={s.logo}
+          accessibilityLabel="Settlr"
+        />
         <Text style={s.brand}>Settlr</Text>
         <Text style={s.tagline}>Shared money, made clear.</Text>
         <View style={s.card}>
@@ -165,18 +169,37 @@ export default function Login() {
                 onSubmitEditing={() => passwordInput.current?.focus()}
                 ref={emailInput}
               />
-              <TextInput
-                testID="auth-password"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                placeholderTextColor={colors.muted}
-                style={s.input}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={() => void submit()}
-                ref={passwordInput}
-              />
+              <View style={s.passwordField}>
+                <TextInput
+                  testID="auth-password"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor={colors.muted}
+                  style={[s.input, s.passwordInput]}
+                  secureTextEntry={!passwordVisible}
+                  returnKeyType="done"
+                  onSubmitEditing={() => void submit()}
+                  ref={passwordInput}
+                />
+                <Pressable
+                  testID="auth-password-visibility-toggle"
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    passwordVisible ? "Hide password" : "Show password"
+                  }
+                  accessibilityState={{ selected: passwordVisible }}
+                  hitSlop={8}
+                  style={s.passwordToggle}
+                  onPress={() => setPasswordVisible((visible) => !visible)}
+                >
+                  <AntDesign
+                    name={passwordVisible ? "eye-invisible" : "eye"}
+                    size={19}
+                    color={colors.muted}
+                  />
+                </Pressable>
+              </View>
               {error ? <Text style={s.error}>{error}</Text> : null}
               <Pressable
                 testID="auth-submit"
@@ -226,11 +249,8 @@ const s = StyleSheet.create({
   logo: {
     width: 52,
     height: 52,
-    borderRadius: 17,
-    backgroundColor: colors.teal,
     alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 17,
   },
   brand: {
     fontFamily: type.title,
@@ -274,6 +294,17 @@ const s = StyleSheet.create({
     padding: 15,
     color: colors.ink,
     marginBottom: 11,
+  },
+  passwordField: { position: "relative", marginBottom: 11 },
+  passwordInput: { marginBottom: 0, paddingRight: 50 },
+  passwordToggle: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 50,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   divider: {
     flexDirection: "row",

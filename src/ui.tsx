@@ -149,20 +149,46 @@ export function Field(
   props: TextInputProps & { label: string; error?: string },
 ) {
   const { label, error, ...input } = props;
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const isPassword = input.secureTextEntry === true;
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: input.editable === false }}
-        placeholderTextColor={colors.muted}
-        style={[
-          styles.input,
-          error && styles.inputError,
-          input.multiline && styles.inputMultiline,
-        ]}
-        {...input}
-      />
+      <View style={[styles.inputWrap, error && styles.inputError]}>
+        <TextInput
+          accessibilityLabel={label}
+          accessibilityState={{ disabled: input.editable === false }}
+          placeholderTextColor={colors.muted}
+          style={[
+            styles.input,
+            isPassword && styles.passwordInput,
+            input.multiline && styles.inputMultiline,
+          ]}
+          {...input}
+          secureTextEntry={isPassword && !passwordVisible}
+        />
+        {isPassword ? (
+          <Pressable
+            testID={
+              input.testID ? `${input.testID}-visibility-toggle` : undefined
+            }
+            accessibilityRole="button"
+            accessibilityLabel={
+              passwordVisible ? "Hide password" : "Show password"
+            }
+            accessibilityState={{ selected: passwordVisible }}
+            hitSlop={8}
+            style={styles.passwordToggle}
+            onPress={() => setPasswordVisible((visible) => !visible)}
+          >
+            <AntDesign
+              name={passwordVisible ? "eye-invisible" : "eye"}
+              size={19}
+              color={colors.muted}
+            />
+          </Pressable>
+        ) : null}
+      </View>
       {error ? <Text style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
@@ -371,15 +397,30 @@ export const styles = StyleSheet.create({
   },
   input: {
     minHeight: 44,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: colors.paper,
     color: colors.ink,
     fontSize: 15,
     textAlignVertical: "center",
+    flex: 1,
+  },
+  inputWrap: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+    position: "relative",
+  },
+  passwordInput: { paddingRight: 50 },
+  passwordToggle: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 50,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   inputMultiline: { minHeight: 72, paddingTop: 12, textAlignVertical: "top" },
   inputError: { borderColor: colors.coral },
